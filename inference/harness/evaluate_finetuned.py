@@ -208,7 +208,7 @@ def passes_validity(text, canon_label):
 # -- SG_ADDRESS_UNIT precision filter ---------------------------------------
 # Unit false positives were mostly bare digit fragments with no unit-number
 # shape or context ('0333', '1704', '8000'), plus clearly unrelated content:
-# 'outbound 661' (a call-type label), '1-800' (a toll-free phone prefix), and
+# 'outbound 123' (a call-type label), '1-800' (a toll-free phone prefix), and
 # '1-1-5-2-6' / '8-5-7-2-2' (digit-by-digit dictated phone numbers). Real
 # Singapore unit numbers are typically a clean "##-####" hyphenated format, so
 # that shape is trusted outright; otherwise a nearby unit/# keyword or
