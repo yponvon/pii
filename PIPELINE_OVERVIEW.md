@@ -210,18 +210,22 @@ the two GLiNER methods; rule-based runs full-text as it has no context ceiling.)
 protection** roll-up (safe if ≥1 fragment is caught, since that breaks
 reconstruction). F2 is the headline because recall (leak-avoidance) is the goal.
 
-**Current results** (`inference/results/frozen_comparison_current_20260722.txt`),
+**Current results** (`inference/results/frozen_comparison.txt`),
 overall P/R/F1/**F2**:
 
 | method | all 9 labels | base 7 labels |
 |---|---|---|
-| baseline | 0.73/0.54/0.62/**0.57** | 0.76/0.64/0.70/**0.66** |
-| rulebased | 0.68/0.16/0.25/**0.18** | 0.68/0.50/0.58/**0.53** |
-| **finetuned** | **0.79/0.65/0.71/0.67** | **0.74/0.77/0.75/0.77** |
+| baseline | 0.68/0.73/0.70/**0.72** | 0.67/0.69/0.68/**0.68** |
+| rulebased | 0.76/0.61/0.68/**0.64** | 0.68/0.50/0.58/**0.53** |
+| **finetuned** | **0.77/0.87/0.82/0.85** | **0.64/0.84/0.72/0.79** |
 
-Finetuned wins on every metric; the gap is widest on **F2/recall** (base-7 recall
-0.64→0.77 for a small precision give 0.76→0.74). Full-NRIC protection: finetuned
-2/2 safe, rule-based leaks 1/2.
+Finetuned wins on F1/F2/recall across all 9 labels, tying rule-based on precision
+(0.77 vs 0.76) while leading recall by 26 points. The gap is widest on
+**F2/recall**, the headline metric. Full-NRIC protection: finetuned 2/2 safe,
+rule-based leaks 1/2.
+
+The rule-based method is scored with its account (bare 10-digit regex) and name
+(spaCy PERSON) recognizers enabled, so the comparison is fair.
 
 ---
 
@@ -238,6 +242,15 @@ See `pii/inference/leak_tests/README.md`. Both run the keeper on the frozen 419:
 
 - **More authentic training data** — the train(synthetic)↔val(authentic) domain gap
   is the main recall ceiling; biggest untested lever.
-- **Value propagation** — redact every occurrence of a detected value (fixes the
-  "read-back" leaks where the agent repeats a number the model tagged only once).
 - **Phone-vs-account gate** — reduce account digit-runs mis-tagged as phone.
+
+### Done
+
+- **Read-back redaction** — repeated occurrences of a detected value are now
+  redacted. Two mechanisms cover this: (1) the model call reads raw predictions
+  instead of the GLiNER2 library's formatted output, whose value-level dedup was
+  dropping read-backs the model detects correctly; and (2) value propagation
+  re-applies a confirmed value to occurrences the raw predictions miss (e.g. a
+  value spoken as words in one place and digits in another, or repeats split
+  across windows). Together these raised all-9 recall from 0.67 to 0.87 at no
+  precision cost.

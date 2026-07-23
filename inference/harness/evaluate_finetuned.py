@@ -459,9 +459,16 @@ _LABEL_THRESHOLD_OVERRIDE = {"SG_ADDRESS_UNIT": 0.75, "SG_ADDRESS_BLOCK": 0.97}
 
 
 def run_fulltext(model, full_text, labels, threshold, return_spans=False):
-    result = model.extract_entities(full_text, labels, threshold=threshold, include_spans=True, include_confidence=True)
+    # format_results=False bypasses the library's output formatter, whose entity
+    # dedup collapses repeated values by text alone (ignoring position). That
+    # dedup drops read-backs -- a PII value read back for confirmation is detected
+    # by the model at full confidence but discarded in formatting. The raw result
+    # keeps every occurrence with its own span, wrapped as {"entities": [ {label: [...] } ]}.
+    result = model.extract_entities(full_text, labels, threshold=threshold, include_spans=True,
+                                    include_confidence=True, format_results=False)
+    entities = result["entities"][0] if result.get("entities") else {}
     raw_entities = []  # (text, canon, start, end, conf)
-    for raw_label, ents in result["entities"].items():
+    for raw_label, ents in entities.items():
         canon = CANON[raw_label]
         min_conf = _LABEL_THRESHOLD_OVERRIDE.get(canon, threshold)
         for e in ents:
