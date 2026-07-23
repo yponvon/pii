@@ -1,0 +1,49 @@
+# =============================================================================
+# EchoLens PII redaction — .gitignore
+# Defensive by design: customer data, model artifacts, logs, and experiment
+# archives are never committed. When in doubt, a path is excluded here.
+# =============================================================================
+
+# --- Python ---
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# =============================================================================
+# CUSTOMER DATA AND ANYTHING DERIVED FROM IT — never commit (real PII,
+# including in file names)
+# =============================================================================
+# Raw and annotated transcripts.
+data/
+# Train/val/test splits are built from the transcripts, so they contain PII.
+finetuning/splits/
+# Training and run logs.
+**/logs/
+*.log
+# Leak-test intermediate data and all HTML reports contain real transcripts.
+inference/results/*.html
+inference/results/leak_tests/
+# Per-file failure documentation and raw prediction dumps contain PII entity
+# text. Only the aggregate frozen_comparison_*.txt metric tables are safe.
+inference/results/baseline/
+inference/results/finetuned/
+inference/results/rulebased/
+# Experiment archive (includes PII data backups).
+archive/
+# Planning notes that still contain transcript excerpts; scrub before committing.
+FULL_CONTEXT.md
+FINETUNE_9LABEL_PLAN.md
+
+# =============================================================================
+# MODEL ARTIFACTS — keep only the fine-tuned keeper adapter (~13 MB) so results
+# reproduce; exclude the intermediate checkpoints and superseded experiments.
+# The base model downloads from Hugging Face at runtime.
+# =============================================================================
+models/*
+!models/finetuned_workable_D_9label/
+models/finetuned_workable_D_9label/*
+!models/finetuned_workable_D_9label/best/
+
+# --- Vendored dependency git metadata ---
+external/*/.git/
