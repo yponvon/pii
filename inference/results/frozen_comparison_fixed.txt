@@ -1,0 +1,33 @@
+==============================================================================
+FROZEN 3-WAY COMPARISON  --  419 files (test_gold_419.jsonl)
+matcher=match_entities_fixed  NRIC-filter=OFF  GLiNER thr=0.35 (windowed 1800/400)  rule-based thr=0.5 (full text)
+==============================================================================
+
+PER-LABEL  (precision / recall / F1)
+------------------------------------------------------------------------------
+label                         baseline         rulebased         finetuned
+EMAIL_ADDRESS         0.73/0.89/0.80  0.00/0.00/0.00  0.69/0.97/0.80
+SG_ADDRESS            0.65/0.79/0.72  0.69/0.59/0.64  0.65/0.93/0.76
+SG_ADDRESS_BLOCK      1.00/0.24/0.38  0.92/0.64/0.76  0.99/0.64/0.78
+SG_ADDRESS_UNIT       0.86/0.50/0.63  0.59/0.49/0.54  0.83/0.73/0.78
+SG_NRIC_FIN           0.50/1.00/0.67  1.00/0.20/0.33  0.45/1.00/0.62
+SG_PHONE_NUMBER       0.78/0.64/0.70  0.94/0.34/0.50  0.69/0.70/0.70
+SG_POSTAL_CODE        0.93/0.68/0.79  0.54/0.62/0.58  0.94/0.63/0.76
+ACCOUNT_NUMBER        0.50/0.56/0.53  0.00/0.00/0.00  0.73/0.57/0.64
+FULL_NAME             0.84/0.47/0.61  0.00/0.00/0.00  0.86/0.59/0.70
+
+OVERALL  (precision / recall / F1)
+------------------------------------------------------------------------------
+method                        all 9 labels         base 7 labels
+baseline                    0.73/0.54/0.62        0.76/0.64/0.69
+rulebased                   0.68/0.16/0.25        0.68/0.50/0.58
+finetuned                   0.79/0.64/0.71        0.74/0.77/0.75
+
+FULL-NRIC PROTECTION  (safe = at least one piece caught, breaking reconstruction)
+------------------------------------------------------------------------------
+baseline            2/2 safe, 0 leaked   (rate 1.00)
+rulebased           1/2 safe, 1 leaked   (rate 0.50)
+finetuned           2/2 safe, 0 leaked   (rate 1.00)
+
+Note: the rule-based system has no ACCOUNT_NUMBER or FULL_NAME recognizer,
+so it scores zero recall on those two labels -- the gap fine-tuning closes.
