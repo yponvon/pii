@@ -1,7 +1,7 @@
 #!/bin/zsh
-cd /Users/yvonne/INTERN/echolens/data_25_june/finetune
+cd data_25_june/finetune
 while pgrep -f "train_sweep.py|run_sweep.sh" >/dev/null; do sleep 120; done
-P=/Users/yvonne/INTERN/echolens/venv/bin/python3
+P=venv/bin/python3
 echo "===== SWEEP val_loss ranking ====="
 for t in D A B C; do
   b=$(grep -o "'eval_loss': [0-9.]*" sweep_$t.log 2>/dev/null | grep -oE "[0-9.]+" | sort -n | head -1)

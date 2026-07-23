@@ -17,7 +17,7 @@ use repo-relative paths. **HTML reports** are written to `pii/inference/results/
 `pii/inference/results/leak_tests/`.
 
 Run everything with the project venv:
-`/Users/yvonne/INTERN/echolens/venv/bin/python3`
+`venv/bin/python3`
 
 ---
 

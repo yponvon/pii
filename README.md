@@ -1,4 +1,4 @@
-# EchoLens PII Redaction
+# PII Redaction
 
 Detect and redact personal identifiers in Singapore call-centre transcripts.
 A GLiNER2 model is LoRA fine-tuned on nine PII types, then applied through an

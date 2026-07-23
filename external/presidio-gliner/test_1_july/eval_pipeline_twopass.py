@@ -20,7 +20,7 @@ This never introduces new spans -- it can only remove Pass-1 phone
 candidates that a narrow, label-restricted re-check disagrees with.
 
 Usage:
-  /Users/yvonne/INTERN/echolens/venv/bin/python3 eval_pipeline_twopass.py
+  venv/bin/python3 eval_pipeline_twopass.py
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ from eval_pipeline import (
     _find_postal_codes_with_context,
 )
 
-OUT_DIR = Path("/Users/yvonne/INTERN/echolens/data_25_june/run3_twopass_eval")
+OUT_DIR = Path("data_25_june/run3_twopass_eval")
 
 # -- Pass 2 config --------------------------------------------------------
 

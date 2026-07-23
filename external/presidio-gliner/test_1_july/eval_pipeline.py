@@ -16,7 +16,7 @@ Output: per-file TP/FP/FN/P/R/F1, then overall totals.
         CSVs saved to run2_full_text_eval/.
 
 Usage:
-  /Users/yvonne/INTERN/echolens/venv/bin/python3 eval_pipeline.py
+  venv/bin/python3 eval_pipeline.py
 """
 
 from __future__ import annotations
@@ -31,9 +31,9 @@ from gliner2 import GLiNER2
 
 # -- paths ---------------------------------------------------------------------
 
-ORIG_DIR = Path("/Users/yvonne/INTERN/echolens/data_25_june/original_annotated")
-GOLD_DIR = Path("/Users/yvonne/INTERN/echolens/data_25_june/redaction_annotated")
-OUT_DIR  = Path("/Users/yvonne/INTERN/echolens/data_25_june/run2_full_text_eval")
+ORIG_DIR = Path("data_25_june/original_annotated")
+GOLD_DIR = Path("data_25_june/redaction_annotated")
+OUT_DIR  = Path("data_25_june/run2_full_text_eval")
 
 # -- model ---------------------------------------------------------------------
 

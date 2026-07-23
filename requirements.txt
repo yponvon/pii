@@ -1,4 +1,4 @@
-# EchoLens PII redaction — Python dependencies
+# PII redaction — Python dependencies
 #
 # Target: Python 3.11 (developed and verified on 3.11.9).
 # Install:

@@ -1,5 +1,5 @@
 # =============================================================================
-# EchoLens PII redaction — .gitignore
+# PII redaction — .gitignore
 # Defensive by design: customer data, model artifacts, logs, and experiment
 # archives are never committed. When in doubt, a path is excluded here.
 # =============================================================================
@@ -45,5 +45,13 @@ models/*
 models/finetuned_workable_D_9label/*
 !models/finetuned_workable_D_9label/best/
 
-# --- Vendored dependency git metadata ---
+# --- Notebooks (saved cell outputs can contain real transcripts) ---
+*.ipynb
+
+# --- Excluded external content ---
+# Dead duplicate of the rule-based system.
+external/presidio-gliner/test_25_june/
+# Separate experimental work; not imported, and carries its own data directory.
+external/gliner2-pii/
+# Vendored dependency git metadata.
 external/*/.git/

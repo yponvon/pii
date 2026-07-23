@@ -1,6 +1,6 @@
 #!/bin/zsh
-cd /Users/yvonne/INTERN/echolens/data_25_june/finetune
-P=/Users/yvonne/INTERN/echolens/venv/bin/python3
+cd data_25_june/finetune
+P=venv/bin/python3
 # tag | enc_lr | task_lr | max_len | train | val
 CFG=(
  "D 1e-5 5e-4 512 train_mixed2.jsonl val_mixed2.jsonl"
