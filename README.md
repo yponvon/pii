@@ -55,6 +55,18 @@ model = load_finetuned()
 print(redact(model, transcript, fmt="tagged"))
 ```
 
+## Retrain the model
+
+The trained adapter is already included, so retraining is optional. To retrain:
+
+1. Place the training splits `train_mixed2.jsonl` and `val_mixed2.jsonl` in
+   `finetuning/splits/`. These contain real PII, so they are kept offline and are
+   not part of this repository.
+2. Run `python finetuning/scripts/train_workable.py` (seed 42).
+
+The best adapter is written to `models/finetuned_workable_D_9label/best`, which is
+the checkpoint the inference scripts load by default.
+
 ## Pipeline
 
 A transcript flows through spoken-number normalization, overlapping-window

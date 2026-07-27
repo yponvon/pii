@@ -55,3 +55,14 @@ external/presidio-gliner/test_25_june/
 external/gliner2-pii/
 # Vendored dependency git metadata.
 external/*/.git/
+
+# =============================================================================
+# Experimental: chunked-training runs (a tested dead end). Kept locally for
+# reference but not committed. Remove these lines to include them later.
+# =============================================================================
+CHUNKED_MODEL.md
+finetuning/data_prep/build_chunked_training_data.py
+finetuning/scripts/train_chunked.py
+finetuning/scripts/train_chunked_ctx.py
+inference/results/frozen_comparison_chunked.txt
+inference/results/frozen_comparison_chunked_ctx.txt
