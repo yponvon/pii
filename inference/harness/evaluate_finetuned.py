@@ -21,7 +21,7 @@ import pandas as pd
 from gliner2 import GLiNER2
 
 _PII_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(_PII_ROOT / "external" / "presidio-gliner" / "test_1_july"))
+sys.path.insert(0, str(_PII_ROOT / "external" / "presidio-gliner" / "scoring_utils"))
 from eval_pipeline import (  # noqa: E402
     ORIG_DIR, GOLD_DIR, extract_gold_entities, match_entities, _prf,
     _is_valid_nric, _passes_content_filter, _ADDR_CONTEXT_RE, _POSTAL6_RE,
@@ -455,6 +455,8 @@ def find_propagated_spans(text, accepted, address_spans):
 # SG_ADDRESS_UNIT clears all three precision/recall/F1 gates (P=0.8056,
 # R=0.8286, F1=0.8169) at confidence >= 0.75, whereas the shared 0.35 default
 # gives higher F1 (P=0.7674, R=0.9429, F1=0.8461) but fails the P > 0.8 gate.
+# SG_ADDRESS_BLOCK is held to a high 0.97 because bare block digits are a frequent
+# false positive; only very confident block predictions are kept.
 _LABEL_THRESHOLD_OVERRIDE = {"SG_ADDRESS_UNIT": 0.75, "SG_ADDRESS_BLOCK": 0.97}
 
 
@@ -694,13 +696,9 @@ def run_windowed(model, full_text, labels, threshold, win_chars=1800, overlap=40
 
 
 def run_windowed_rows(model, rows, labels, threshold, window=WINDOW):
-    # Legacy row-based windowing (build_window, plus or minus WINDOW rows). Used
-    # only by the self-test main() below; do not import it for the frozen
-    # benchmark. The canonical windowing is run_windowed() above (character
-    # overlap, absolute-span dedup). This function previously shared the name
-    # run_windowed and shadowed the character version, so
-    # `benchmark_all_labels.py --windowed` was calling it with a string full_text
-    # as `rows` (iterating over characters). It was renamed to end that collision.
+    # Legacy row-based windowing, used only by the self-test main() below. The
+    # canonical windowing is run_windowed() above (character overlap,
+    # absolute-span dedup); prefer it for the benchmark.
     all_results = []
     for i in range(len(rows)):
         combined, target_start, target_end = build_window(rows, i, window)

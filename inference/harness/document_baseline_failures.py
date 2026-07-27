@@ -18,7 +18,7 @@ sys.path.insert(0, ".")
 from evaluate_finetuned import MODEL_PATH, BASELINE_LABELS, run_fulltext  # noqa: E402
 from evaluate_majority import _TRAIN_LABEL_TO_CANON  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "test_1_july"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "scoring_utils"))
 from eval_pipeline import texts_match, same_label_group, _prf  # noqa: E402
 
 from gliner2 import GLiNER2
@@ -79,11 +79,8 @@ def main():
 
         misses, extras, gold_matched, pred_matched = match_detail(pred, gold)
 
-        for i, (pt, pl) in enumerate(pred):
-            for j, (gt, gl) in enumerate(gold):
-                if gold_matched[j] and texts_match(pt, gt) and same_label_group(pl, gl):
-                    pass
-        # recompute per-label TP properly
+        # Per-label true positives: match each prediction to a gold entry, then
+        # bucket the matches by label.
         gold_matched2 = [False] * len(gold)
         pred_matched2 = [False] * len(pred)
         for i, (pt, pl) in enumerate(pred):

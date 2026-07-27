@@ -61,7 +61,7 @@ GLiNER2Recognizer). Copy it alongside this file or install it as a package.
 
     import requests
 
-    BASE_URL = "https://chatbot-guardrails-dev.qa"
+    BASE_URL = "https://<your-guardrail-service>.internal"
     url = f"{BASE_URL}/guardrails/pii-redaction"
 
     payload = {

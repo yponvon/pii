@@ -3,7 +3,7 @@
 Traced from the actual code, data, and training logs (2026-07-22). This is the
 "how the whole thing works" reference: training → diagnostics → inference.
 
-Keeper model: **`pii/models/finetuned_workable_D_9label/best`** (a LoRA adapter).
+Keeper model: **`pii/models/finetuned_pii_9label/best`** (a LoRA adapter).
 
 ---
 
@@ -59,13 +59,79 @@ Format — one JSON object per line (`.jsonl`), model-native GLiNER2 shape:
 All three verified disjoint by full-text hash. Only **3 / 1,150** train examples
 are negatives (no entities) — the corpus is almost all PII-bearing.
 
-Train-set label mention counts (what it saw most):
+Train-set label balance — every label is well represented: each appears in
+63–91% of the 1,150 transcripts, and mention counts span a modest 3.1× range
+(no label dominates or is starved).
 
-```
-sg_phone_number 6266   account_number 4073   sg_nric_fin 3847
-sg_address 3833   sg_postal_code 3198   sg_address_unit 2998
-sg_address_block 2943   email_address 2160   full_name 2038
-```
+| Label | Files with label | % of files | Mentions |
+|---|--:|--:|--:|
+| Phone | 936 | 81% | 6,266 |
+| Account | 1,050 | 91% | 4,073 |
+| NRIC/FIN | 737 | 64% | 3,847 |
+| Address | 903 | 79% | 3,833 |
+| Postal code | 721 | 63% | 3,198 |
+| Unit number | 846 | 74% | 2,998 |
+| Block number | 783 | 68% | 2,943 |
+| Email | 803 | 70% | 2,160 |
+| Full name | 816 | 71% | 2,038 |
+
+**What the model actually trains on (the 512-token cut).** Training uses
+`max_len=512`, so only the first ~512 tokens of each call reach the model — about
+**30%** of all gold entity occurrences; the rest sit later in the call and are
+truncated away. Because call openings are verification-heavy (name and address are
+read out first), this makes the *training-visible* balance skewed (an 8× range vs
+the 3.1× above):
+
+| Label | Seen in training | % of label seen |
+|---|--:|--:|
+| Full name | 1,274 / 2,038 | 63% |
+| Unit number | 1,397 / 3,024 | 46% |
+| Address | 1,647 / 3,847 | 43% |
+| Block number | 1,211 / 2,950 | 41% |
+| Postal code | 1,280 / 3,213 | 40% |
+| Phone | 1,646 / 6,282 | 26% |
+| Account | 461 / 4,073 | 11% |
+| NRIC/FIN | 300 / 3,847 | 8% |
+| Email | 165 / 2,163 | 8% |
+| **Total** | **9,381 / 31,437** | **30%** |
+
+Recall does not depend on this, though: overlapping-window inference reads the whole
+call at prediction time, and regex boosters backstop the structured labels
+(NRIC, email, postal) that training under-samples — so final recall stays high on
+every label (NRIC 1.00, email 0.97) despite the low training exposure.
+
+### Label set: 7 base + 2 new = 9
+
+The base GLiNER2 privacy model natively recognises **7 labels** (phone, address,
+block number, unit number, postal code, email, NRIC/FIN). This project **added 2** —
+**account number** and **full name** — which the authentic transcripts were
+hand-annotated for. There is **one** fine-tuned model, trained on all **9** (not a
+separate 7-label model); the benchmark reports **base-7** (comparable to the base
+model and the rule-based system) and **all-9** (with the 2 new labels).
+
+### Is training proportional to the test set? (composition, base-7 vs new-2)
+
+Comparing what the model trains on (the 512-cut view) to the authentic test set, as
+each label's share of all PII mentions:
+
+| Label | Set | Train (512-cut) | Test | Gap |
+|---|---|--:|--:|--:|
+| Address | base | 17.6% | 8.9% | −8.6 |
+| Phone | base | 17.5% | 7.8% | −9.8 |
+| Unit | base | 14.9% | 5.6% | −9.3 |
+| Postal | base | 13.6% | 5.1% | −8.6 |
+| Block | base | 12.9% | 2.6% | −10.3 |
+| NRIC/FIN | base | 3.2% | 0.1% | −3.1 |
+| Email | base | 1.8% | 0.9% | −0.9 |
+| **Full name** | **new** | **13.6%** | **54.5%** | **+40.9** |
+| **Account** | **new** | **4.9%** | **14.6%** | **+9.6** |
+
+Training is **not** proportional to the test distribution, and the gap is
+concentrated in the **2 new labels**: real calls are name-saturated (54.5%) and
+account-heavy (14.6%), whereas synthetic training under-samples both; the 7 base
+labels are over-represented in training relative to real calls. Note the tension —
+a corpus *balanced across labels* is by definition not *proportional* to a
+name-dominated test set. Closing the gap needs more authentic, name-heavy data.
 
 **Synthetic corpus** (1,050 files, `generated_data_14jul/`) was gold-integrity
 repaired: under-count 0, phantom 0. Bugs fixed included 2,049 under-counted tags,
@@ -77,7 +143,7 @@ the 2 new labels; the original 7 labels are byte-identical to pre-annotation bac
 
 ## 3. Training run (the keeper)
 
-Script: `finetuning/scripts/train_workable.py` (sweep-winner "D" config, run full-length).
+Script: `finetuning/scripts/train.py` (sweep-winner "D" config, run full-length).
 
 | setting | value |
 |---|---|
@@ -116,7 +182,7 @@ Reading it:
   while val is authentic → a domain gap, not pure memorization. This is the main
   reason recall isn't higher, and points at "more authentic data" as the next lever.
 
-Loss curve rendered at `models/finetuned_workable_D_9label/loss.png`.
+Loss curve rendered at `models/finetuned_pii_9label/loss.png`.
 
 ---
 
@@ -213,11 +279,18 @@ reconstruction). F2 is the headline because recall (leak-avoidance) is the goal.
 **Current results** (`inference/results/frozen_comparison.txt`),
 overall P/R/F1/**F2**:
 
-| method | all 9 labels | base 7 labels |
+| method | all 9 (9-label prompt) | base 7 (7-label prompt) |
 |---|---|---|
-| baseline | 0.68/0.73/0.70/**0.72** | 0.67/0.69/0.68/**0.68** |
+| baseline | 0.68/0.73/0.70/**0.72** | 0.63/0.69/0.66/**0.68** |
 | rulebased | 0.76/0.61/0.68/**0.64** | 0.68/0.50/0.58/**0.53** |
-| **finetuned** | **0.77/0.87/0.82/0.85** | **0.64/0.84/0.72/0.79** |
+| **finetuned** | **0.77/0.87/0.82/0.85** | **0.61/0.84/0.71/0.78** |
+
+Each method is run as it would be deployed: prompted with all 9 labels, and
+prompted with only the 7 base labels. The base-7 column is a **genuine 7-label
+run**, not a subset of the 9-label run — the GLiNER models are promptable, so
+dropping account/name from the prompt slightly lowers their base-7 precision
+(those entities leak into the nearest base label). The rule-based system is
+unchanged between the two (its recognizers are independent).
 
 Finetuned wins on F1/F2/recall across all 9 labels, tying rule-based on precision
 (0.77 vs 0.76) while leading recall by 26 points. The gap is widest on

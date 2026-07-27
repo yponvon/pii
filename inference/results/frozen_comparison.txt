@@ -3,7 +3,7 @@ FROZEN 3-WAY COMPARISON  --  419 files (test_gold_419.jsonl)
 matcher=match_entities_fixed  NRIC-filter=OFF  GLiNER thr=0.35 (windowed 1800/400)  rule-based thr=0.5 (full text)
 ==============================================================================
 
-PER-LABEL  (precision / recall / F1 / F2   (F2 = recall-weighted, beta=2))
+PER-LABEL — 9-label prompt (all 9 labels)  (precision / recall / F1 / F2   (F2 = recall-weighted, beta=2))
 ------------------------------------------------------------------------------
 label                              baseline              rulebased              finetuned
 EMAIL_ADDRESS         0.71/0.89/0.79/0.85  0.00/0.00/0.00/0.00  0.67/0.97/0.80/0.89
@@ -16,14 +16,25 @@ SG_POSTAL_CODE        0.82/0.70/0.76/0.72  0.54/0.62/0.58/0.61  0.82/0.65/0.72/0
 ACCOUNT_NUMBER        0.44/0.79/0.57/0.68  0.98/0.08/0.15/0.10  0.74/0.83/0.78/0.81
 FULL_NAME             0.80/0.74/0.77/0.75  0.79/0.82/0.80/0.81  0.88/0.90/0.89/0.90
 
+PER-LABEL — 7-label prompt (base 7 labels)  (precision / recall / F1 / F2   (F2 = recall-weighted, beta=2))
+------------------------------------------------------------------------------
+label                              baseline              rulebased              finetuned
+EMAIL_ADDRESS         0.72/0.94/0.82/0.89  0.00/0.00/0.00/0.00  0.69/0.97/0.80/0.90
+SG_ADDRESS            0.53/0.78/0.63/0.71  0.69/0.59/0.64/0.61  0.51/0.95/0.66/0.81
+SG_ADDRESS_BLOCK      0.96/0.25/0.40/0.30  0.92/0.64/0.76/0.68  0.92/0.63/0.75/0.67
+SG_ADDRESS_UNIT       0.61/0.54/0.57/0.55  0.59/0.49/0.54/0.51  0.63/0.77/0.69/0.74
+SG_NRIC_FIN           0.45/1.00/0.62/0.81  1.00/0.20/0.33/0.24  0.38/1.00/0.56/0.76
+SG_PHONE_NUMBER       0.65/0.82/0.72/0.78  0.94/0.34/0.50/0.39  0.63/0.95/0.76/0.86
+SG_POSTAL_CODE        0.83/0.69/0.75/0.72  0.54/0.62/0.58/0.61  0.82/0.66/0.73/0.69
+
 OVERALL  (precision / recall / F1 / F2   (F2 = recall-weighted, beta=2))
 ------------------------------------------------------------------------------
-method                            all 9 labels             base 7 labels
-baseline                   0.68/0.73/0.70/0.72       0.67/0.69/0.68/0.68
+method                  all 9 (9-label prompt)   base 7 (7-label prompt)
+baseline                   0.68/0.73/0.70/0.72       0.63/0.69/0.66/0.68
 rulebased                  0.76/0.61/0.68/0.64       0.68/0.50/0.58/0.53
-finetuned                  0.77/0.87/0.82/0.85       0.64/0.84/0.72/0.79
+finetuned                  0.77/0.87/0.82/0.85       0.61/0.84/0.71/0.78
 
-FULL-NRIC PROTECTION  (safe = at least one piece caught, breaking reconstruction)
+FULL-NRIC PROTECTION  (9-label prompt; safe = at least one piece caught, breaking reconstruction)
 ------------------------------------------------------------------------------
 baseline            2/2 safe, 0 leaked   (rate 1.00)
 rulebased           1/2 safe, 1 leaked   (rate 0.50)
@@ -31,3 +42,4 @@ finetuned           2/2 safe, 0 leaked   (rate 1.00)
 
 Note: rule-based ACCOUNT_NUMBER = bare-10-digit regex; FULL_NAME = spaCy PERSON.
 GLiNER methods use value propagation (read-back repeats redacted).
+base 7 = a genuine 7-label run (each method prompted with only the 7 base labels).

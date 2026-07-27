@@ -23,7 +23,7 @@ if str(HARNESS_DIR) not in sys.path:
 from evaluate_finetuned import MODEL_PATH, SYNTHETIC_LABELS, run_windowed  # noqa: E402
 from gliner2 import GLiNER2  # noqa: E402
 
-DEFAULT_ADAPTER = HARNESS_DIR.parent.parent / "models" / "finetuned_workable_D_9label" / "best"
+DEFAULT_ADAPTER = HARNESS_DIR.parent.parent / "models" / "finetuned_pii_9label" / "best"
 THRESHOLD = 0.35
 
 
@@ -71,3 +71,23 @@ def redact(model, transcript, fmt="tagged", threshold=THRESHOLD, with_confidence
     if fmt == "tagged":
         return to_tagged(transcript, spans, with_confidence)
     raise ValueError(f"unknown fmt {fmt!r}; use 'raw', 'tagged', or 'spans'")
+
+
+if __name__ == "__main__":
+    # Quick demo on a short synthetic transcript (no real data) so the model can
+    # be tried end to end without the offline test set:
+    #     python inference/harness/redact_output.py
+    demo = (
+        "SPEAKER_00: Good afternoon, may I have your name please?\n"
+        "SPEAKER_01: Hi, it's Jason Lim.\n"
+        "SPEAKER_00: Thanks Jason. Can I verify your NRIC and contact number?\n"
+        "SPEAKER_01: Sure, S1234567A, and my mobile is 9123 4567.\n"
+        "SPEAKER_00: And the address on file?\n"
+        "SPEAKER_01: Block 123 Sunrise Street 12, #05-06, Singapore 570123.\n"
+        "SPEAKER_00: And the account number on the bill?\n"
+        "SPEAKER_01: It's 1234567890, and my email is jason.lim@example.com.\n"
+    )
+    print("Loading model ...")
+    model = load_finetuned()
+    print("\n--- REDACTED ---")
+    print(redact(model, demo, fmt="tagged"))

@@ -41,9 +41,9 @@ FINETUNE_9LABEL_PLAN.md
 # The base model downloads from Hugging Face at runtime.
 # =============================================================================
 models/*
-!models/finetuned_workable_D_9label/
-models/finetuned_workable_D_9label/*
-!models/finetuned_workable_D_9label/best/
+!models/finetuned_pii_9label/
+models/finetuned_pii_9label/*
+!models/finetuned_pii_9label/best/
 
 # --- Notebooks (saved cell outputs can contain real transcripts) ---
 *.ipynb

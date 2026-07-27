@@ -19,7 +19,7 @@ sys.path.insert(0, ".")
 from evaluate_pii_redacted_transcripts import get_predictions_for_file  # noqa: E402
 from evaluate_majority import _TRAIN_LABEL_TO_CANON  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "test_1_july"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "scoring_utils"))
 from eval_pipeline import texts_match, same_label_group, _prf  # noqa: E402
 
 DATA_ALL_DIR = Path(__file__).resolve().parents[2] / "data" / "authentic_test"
@@ -77,11 +77,7 @@ def main():
 
         misses, extras = match_detail(pred, gold)
 
-        gold_matched_count = len(gold) - len(misses)
-        for gl in [l for _t, l in gold]:
-            pass  # per-label TP counted below via matched set instead
-
-        # recompute matched set for per-label TP bucketing
+        # Per-label true positives: match predictions to gold, then bucket by label.
         gold_matched = [False] * len(gold)
         pred_matched = [False] * len(pred)
         for i, (pt, pl) in enumerate(pred):

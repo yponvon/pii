@@ -30,7 +30,7 @@ Requirements:
 Usage:
   python run_frozen_comparison.py [ADAPTER_DIR] [-o OUTPUT]
   python run_frozen_comparison.py --help
-  ADAPTER_DIR defaults to the workable-D best checkpoint; if it does not exist,
+  ADAPTER_DIR defaults to the fine-tuned keeper's best checkpoint; if it does not exist,
   the fine-tuned method is skipped and only baseline and rule-based are scored.
 """
 
@@ -59,21 +59,21 @@ PRESIDIO_DIR = PII_ROOT / "external" / "presidio-gliner"
 
 # The two sibling harness modules and the presidio eval helper are imported by
 # name, so their directories must be on sys.path before the imports below.
-for _path in (HARNESS_DIR, PRESIDIO_DIR / "test_1_july"):
+for _path in (HARNESS_DIR, PRESIDIO_DIR / "scoring_utils"):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
 from evaluate_finetuned import (  # noqa: E402
     CANON, MODEL_PATH, BASELINE_LABELS, SYNTHETIC_LABELS, run_windowed,
 )
-from match_fixed import match_entities_fixed  # noqa: E402
+from span_matcher import match_entities_fixed  # noqa: E402
 from eval_pipeline import _prf  # noqa: E402
 
 from gliner2 import GLiNER2
 
 # Fixed inputs and outputs.
 FROZEN = PII_ROOT / "data" / "frozen" / "test_gold_419.jsonl"          # the gold set
-DEFAULT_ADAPTER = PII_ROOT / "models" / "finetuned_workable_D_9label" / "best"
+DEFAULT_ADAPTER = PII_ROOT / "models" / "finetuned_pii_9label" / "best"
 RESULTS = PII_ROOT / "inference" / "results" / "frozen_comparison.txt"  # text report
 
 # Reported F-score weighting. For PII redaction a miss (a leak) is worse than an
@@ -121,6 +121,16 @@ REPORT_LABELS = ["EMAIL_ADDRESS", "SG_ADDRESS", "SG_ADDRESS_BLOCK", "SG_ADDRESS_
                  "SG_NRIC_FIN", "SG_PHONE_NUMBER", "SG_POSTAL_CODE",
                  "ACCOUNT_NUMBER", "FULL_NAME"]
 BASE7 = REPORT_LABELS[:7]  # the seven labels reported by the historical benchmark
+
+# 7-label query variants: the same per-method queries with the two new labels
+# (account_number, full_name) dropped. A 7-label deployment prompts each method
+# with only those seven, so the "base 7 labels" column is scored from a genuine
+# 7-label run rather than a subset of the 9-label run. This matters because the
+# GLiNER models are promptable: the label set they are asked for changes what
+# they predict for the labels that remain.
+BASELINE_QUERY_7 = [l for l in BASELINE_QUERY if CANON.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
+SYNTHETIC_LABELS_7 = [l for l in SYNTHETIC_LABELS if CANON.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
+RULEBASED_ENTITIES_7 = [e for e in RULEBASED_ENTITIES if RULEBASED_CANON[e] not in ("ACCOUNT_NUMBER", "FULL_NAME")]
 
 # Aggregated results for one method: true/false positives and false negatives
 # bucketed per label and corpus-wide, plus the NRIC leak-prevention roll-up
@@ -176,15 +186,15 @@ def load_frozen() -> List[Tuple[str, List[Tuple[str, str]]]]:
 # (entity_text, CANON_LABEL) predictions, so all three feed the shared matcher
 # in an identical format.
 
-def predict_baseline(model, text: str) -> List[Tuple[str, str]]:
-    """Zero-shot GLiNER, run with overlapping-window inference."""
-    return run_windowed(model, text, BASELINE_QUERY, GLINER_THRESHOLD,
+def predict_baseline(model, text: str, labels) -> List[Tuple[str, str]]:
+    """Zero-shot GLiNER, run with overlapping-window inference on `labels`."""
+    return run_windowed(model, text, labels, GLINER_THRESHOLD,
                         win_chars=WIN_CHARS, overlap=OVERLAP)
 
 
-def predict_finetuned(model, text: str) -> List[Tuple[str, str]]:
-    """Fine-tuned GLiNER, run with overlapping-window inference."""
-    return run_windowed(model, text, SYNTHETIC_LABELS, GLINER_THRESHOLD,
+def predict_finetuned(model, text: str, labels) -> List[Tuple[str, str]]:
+    """Fine-tuned GLiNER, run with overlapping-window inference on `labels`."""
+    return run_windowed(model, text, labels, GLINER_THRESHOLD,
                         win_chars=WIN_CHARS, overlap=OVERLAP)
 
 
@@ -192,14 +202,14 @@ _SPEAKER_LABEL_RE = re.compile(r'^(?:speaker[_\s]*\d+|unknown|caller|agent|custo
                                re.IGNORECASE)
 
 
-def predict_rulebased(redactor, text: str) -> List[Tuple[str, str]]:
-    """Rule-based presidio system, run on the full transcript.
+def predict_rulebased(redactor, text: str, entities) -> List[Tuple[str, str]]:
+    """Rule-based presidio system, run on the full transcript for `entities`.
 
     Detections are mapped from presidio recognizer names to the shared CANON
     labels.
     """
     results = redactor.analyzer.analyze(
-        text=text, entities=RULEBASED_ENTITIES, language="en",
+        text=text, entities=entities, language="en",
         score_threshold=RULEBASED_THRESHOLD,
     )
     predictions = []
@@ -286,29 +296,40 @@ def overall_prf(labels, s: Scores):
 
 
 def evaluate_methods(cases, adapter: Path, log: Callable[[str], None]) -> dict:
-    """Run all three methods over the frozen cases and return {name: Scores}.
+    """Run all three methods over the frozen cases and return the scores.
 
-    Each method loads its model, is scored with the shared `score` helper, and
-    reports progress through `log`. The fine-tuned method is skipped if its
-    adapter directory does not exist, so the script still produces a baseline
-    versus rule-based comparison before any model has been trained.
+    Each method is run twice: once prompted with all nine labels, and once with
+    only the seven base labels, so the two report columns reflect how the method
+    is actually called in a 9-label and a 7-label deployment. The result is
+    ``{name: {"nine": Scores, "seven": Scores}}``. The fine-tuned method is
+    skipped if its adapter directory does not exist, so the script still produces
+    a baseline versus rule-based comparison before any model has been trained.
     """
     methods = {}
 
-    log("[1/3] baseline (zero-shot GLiNER, windowed) ...")
+    log("[1/3] baseline (zero-shot GLiNER, windowed) -- 9-label then 7-label ...")
     base_model = GLiNER2.from_pretrained(MODEL_PATH)
-    methods["baseline"] = score(cases, lambda text: predict_baseline(base_model, text))
+    methods["baseline"] = {
+        "nine": score(cases, lambda text: predict_baseline(base_model, text, BASELINE_QUERY)),
+        "seven": score(cases, lambda text: predict_baseline(base_model, text, BASELINE_QUERY_7)),
+    }
 
-    log("[2/3] rule-based (presidio, full text) ...")
+    log("[2/3] rule-based (presidio, full text) -- 9-label then 7-label ...")
     redactor_class = load_pii_redactor()
     redactor = redactor_class()
-    methods["rulebased"] = score(cases, lambda text: predict_rulebased(redactor, text))
+    methods["rulebased"] = {
+        "nine": score(cases, lambda text: predict_rulebased(redactor, text, RULEBASED_ENTITIES)),
+        "seven": score(cases, lambda text: predict_rulebased(redactor, text, RULEBASED_ENTITIES_7)),
+    }
 
-    log("[3/3] fine-tuned (GLiNER + adapter, windowed) ...")
+    log("[3/3] fine-tuned (GLiNER + adapter, windowed) -- 9-label then 7-label ...")
     if adapter.exists():
         ft_model = GLiNER2.from_pretrained(MODEL_PATH)
         ft_model.load_adapter(str(adapter))
-        methods["finetuned"] = score(cases, lambda text: predict_finetuned(ft_model, text))
+        methods["finetuned"] = {
+            "nine": score(cases, lambda text: predict_finetuned(ft_model, text, SYNTHETIC_LABELS)),
+            "seven": score(cases, lambda text: predict_finetuned(ft_model, text, SYNTHETIC_LABELS_7)),
+        }
     else:
         log(f"      adapter not found at {adapter} -- fine-tuned method skipped")
 
@@ -343,35 +364,43 @@ def format_report(methods: dict, num_files: int) -> List[str]:
                  f"rule-based thr={RULEBASED_THRESHOLD} (full text)")
     lines.append("=" * 78)
 
-    # Per-label table: one row per label, one column per method.
-    lines.append("")
-    lines.append(f"PER-LABEL  (precision / recall / {fscore})")
-    lines.append("-" * 78)
-    lines.append(f"{'label':<20}" + "".join(f"{name:>23}" for name in columns))
-    for label in REPORT_LABELS:
-        row = f"{label:<20}"
-        for name in columns:
-            s = methods[name]
-            row += "  " + cell(_prf(s.tp_by_label[label], s.fp_by_label[label], s.fn_by_label[label]))
-        lines.append(row)
+    def per_label_table(title, prompt_key, label_list):
+        lines.append("")
+        lines.append(f"PER-LABEL — {title}  (precision / recall / {fscore})")
+        lines.append("-" * 78)
+        lines.append(f"{'label':<20}" + "".join(f"{name:>23}" for name in columns))
+        for label in label_list:
+            row = f"{label:<20}"
+            for name in columns:
+                s = methods[name][prompt_key]
+                row += "  " + cell(_prf(s.tp_by_label[label], s.fp_by_label[label], s.fn_by_label[label]))
+            lines.append(row)
 
-    # Overall table: all nine labels, and the seven-label historical subset.
+    # Two per-label tables: one for each deployment configuration. The 9-label
+    # prompt covers all nine labels; the 7-label prompt is a genuine 7-label run
+    # (the model is only asked for those seven), scored on the base seven.
+    per_label_table("9-label prompt (all 9 labels)", "nine", REPORT_LABELS)
+    per_label_table("7-label prompt (base 7 labels)", "seven", BASE7)
+
+    # Overall table: all nine (from the 9-label run) and base seven (from the
+    # 7-label run), so each column matches how the method would actually be called.
     lines.append("")
     lines.append(f"OVERALL  (precision / recall / {fscore})")
     lines.append("-" * 78)
-    lines.append(f"{'method':<20}{'all 9 labels':>26}{'base 7 labels':>26}")
+    lines.append(f"{'method':<20}{'all 9 (9-label prompt)':>26}{'base 7 (7-label prompt)':>26}")
     for name in columns:
-        s = methods[name]
-        lines.append(f"{name:<20}{cell(overall_prf(REPORT_LABELS, s)):>26}"
-                     f"{cell(overall_prf(BASE7, s)):>26}")
+        s9, s7 = methods[name]["nine"], methods[name]["seven"]
+        lines.append(f"{name:<20}{cell(overall_prf(REPORT_LABELS, s9)):>26}"
+                     f"{cell(overall_prf(BASE7, s7)):>26}")
 
-    # Full-NRIC roll-up: a full NRIC leaks only when every piece is left exposed.
-    # Catching even one piece breaks reconstruction, so the call is safe.
+    # Full-NRIC roll-up (from the 9-label run): a full NRIC leaks only when every
+    # piece is left exposed. Catching even one piece breaks reconstruction, so the
+    # call is safe.
     lines.append("")
-    lines.append("FULL-NRIC PROTECTION  (safe = at least one piece caught, breaking reconstruction)")
+    lines.append("FULL-NRIC PROTECTION  (9-label prompt; safe = at least one piece caught, breaking reconstruction)")
     lines.append("-" * 78)
     for name in columns:
-        s = methods[name]
+        s = methods[name]["nine"]
         leaked = s.nric_total - s.nric_protected
         rate = f"rate {s.nric_protected / s.nric_total:.2f}" if s.nric_total else "n/a"
         lines.append(f"{name:<20}{s.nric_protected}/{s.nric_total} safe, "
@@ -380,6 +409,7 @@ def format_report(methods: dict, num_files: int) -> List[str]:
     lines.append("")
     lines.append("Note: rule-based ACCOUNT_NUMBER = bare-10-digit regex; FULL_NAME = spaCy PERSON.")
     lines.append("GLiNER methods use value propagation (read-back repeats redacted).")
+    lines.append("base 7 = a genuine 7-label run (each method prompted with only the 7 base labels).")
     return lines
 
 

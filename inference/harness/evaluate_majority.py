@@ -1,10 +1,9 @@
 """
 evaluate_majority.py
 
-Evaluates baseline vs fine-tuned models on the new, properly representative
-56-file majority test set (test_fulltext_majority.jsonl), which is drawn
-randomly from typical/majority calls, not the hard-49 curated set. This is
-the primary "does it actually work for most calls" measure going forward.
+Evaluates baseline vs fine-tuned models on the 56-file majority test set
+(test_fulltext_majority.jsonl), drawn randomly from typical calls rather than
+the hard-49 curated set, to measure performance on typical-call inputs.
 
 Usage:
   python3 evaluate_majority.py
@@ -16,7 +15,7 @@ from pathlib import Path
 
 from gliner2 import GLiNER2
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "test_1_july"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "scoring_utils"))
 from eval_pipeline import match_entities, _prf  # noqa: E402
 
 from evaluate_finetuned import (  # noqa: E402

@@ -6,7 +6,7 @@ its first 512 tokens and so never learned the ~23% of PII that appears later),
 this trains on overlapping 256-token windows built by
 build_windowed_training_data.py, so the model sees the WHOLE call.
 
-Config: same LoRA / learning rates as the workable run, but tuned for the
+Config: same LoRA / learning rates as the keeper run, but tuned for the
 smaller windows -- max_len 320 (windows are 256 tokens; 320 leaves headroom) and
 a larger batch, since short sequences fit comfortably. Early stopping (patience
 3) decides when to stop. A train+val loss PNG is rendered at the end.

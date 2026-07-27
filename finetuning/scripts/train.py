@@ -25,14 +25,14 @@ from gliner2.training.trainer import GLiNER2Trainer, TrainingConfig
 MODEL_PATH = "fastino/gliner2-privacy-filter-PII-multi"
 _ROOT = Path(__file__).resolve().parents[2]
 SPLITS = _ROOT / "finetuning" / "splits"
-OUT = _ROOT / "models" / "finetuned_workable_D_9label"
+OUT = _ROOT / "models" / "finetuned_pii_9label"
 LOGS = _ROOT / "finetuning" / "logs"
 
 
 def main() -> None:
     cfg = TrainingConfig(
         output_dir=str(OUT),
-        experiment_name="workable_D_9label",
+        experiment_name="finetuned_pii_9label",
         num_epochs=15,
         batch_size=4, eval_batch_size=4,
         encoder_lr=1e-5, task_lr=5e-4,
@@ -57,7 +57,7 @@ def main() -> None:
     except Exception as exc:
         print("could not serialize results:", exc)
     # Plot from the log file, which stays robust even if the results shape varies.
-    log = LOGS / "train_workable.log"
+    log = LOGS / "train.log"
     if log.exists():
         subprocess.run(
             [sys.executable,

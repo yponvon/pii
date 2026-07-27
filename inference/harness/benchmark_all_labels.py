@@ -4,7 +4,7 @@ benchmark_all_labels.py
 The authoritative benchmark for the /goal task: per-label P/R/F1 across
 all 7 entity types, on the two clean held-out test sets (8-file hard +
 56-file majority, 64 files total, zero training exposure for any model
-variant). Uses match_fixed's match_entities_fixed (the corrected
+variant). Uses span_matcher's match_entities_fixed (the corrected
 matching logic) and WITH postprocessing (the production configuration).
 
 Usage:
@@ -23,9 +23,9 @@ from evaluate_finetuned import (  # noqa: E402
     DATA_DIR, MODEL_PATH, FINETUNED_LABELS, SYNTHETIC_LABELS, run_fulltext, load_test_cases,
 )
 from evaluate_majority import load_majority_test_cases  # noqa: E402
-from match_fixed import match_entities_fixed  # noqa: E402
+from span_matcher import match_entities_fixed  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "test_1_july"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "scoring_utils"))
 from eval_pipeline import ORIG_DIR, GOLD_DIR, extract_gold_entities, _prf  # noqa: E402
 
 from gliner2 import GLiNER2
@@ -33,16 +33,15 @@ from gliner2 import GLiNER2
 THRESHOLD = 0.35
 CANON_MERGE = {"SG_ADDRESS_BLOCK_NUMBER": "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT_NUMBER": "SG_ADDRESS_UNIT"}
 
-# The base 7 labels this benchmark has always reported. Unchanged.
+# The 7 base labels reported by this benchmark.
 BASE_REPORT_LABELS = ["EMAIL_ADDRESS", "SG_ADDRESS", "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT",
                       "SG_NRIC_FIN", "SG_PHONE_NUMBER", "SG_POSTAL_CODE"]
-# The 2 labels added by the synthetic corpus (generated_data_14jul/). Reported
-# only in --synthetic mode; see the note in main() about gold availability.
+# The 2 labels added by the synthetic corpus. Reported only in --synthetic mode;
+# see the note in main() about gold availability.
 SYNTHETIC_EXTRA_REPORT_LABELS = ["ACCOUNT_NUMBER", "FULL_NAME"]
 
-# Per user decision: only FULL-format NRIC/FIN counts as gold (manager isn't
-# concerned with partial 3/4-digit+letter mentions). Matches the /goal's own
-# definition: "sg_nric_fin (T/S/G/F 0599333 A-Z)".
+# Only full-format NRIC/FIN is scored as gold; partial 3/4-digit+letter fragments
+# are ignored (a full NRIC is [STFG] + 7 digits + a checksum letter).
 import re  # noqa: E402
 _FULL_NRIC_RE = re.compile(r'^[STFG]\d{7}[A-Z]$')
 

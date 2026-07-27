@@ -10,7 +10,7 @@ in `run_frozen_comparison.py`:
    Business Unit can no longer identify the customer?
 
 Both run against the frozen set (`pii/data/frozen/test_gold_419.jsonl`) and the
-fine-tuned keeper model (`pii/models/finetuned_workable_D_9label/best`). Scripts
+fine-tuned keeper model (`pii/models/finetuned_pii_9label/best`). Scripts
 use repo-relative paths. **HTML reports** are written to `pii/inference/results/`
 (`leaked_transcripts.html`, `account_unrecoverable.html`); **intermediate data**
 (redacted transcripts, judge results, account detail) goes to
