@@ -1,22 +1,27 @@
-"""Build the train/val/test jsonl splits for the 9-label PII model.
+"""Build the train/val/test jsonl splits for the 9-label PII model (the keeper's
+"mixed2" recipe).
 
 The split mixes synthetic and authentic transcripts:
 
-  TRAIN : 1000 synthetic transcripts
-  VAL   : 186 authentic + 50 synthetic
-  TEST  : authentic, held out entirely
+  TRAIN : 1000 synthetic + 150 authentic   -> train_mixed2.jsonl   (1150)
+  VAL   :   30 synthetic +  36 authentic   -> val_mixed2.jsonl     (66)
+  TEST  : all authentic (held out entirely) -> test_mixed2.jsonl
 
-Validating and testing on authentic calls measures real-world performance,
-whereas a synthetic val set mostly measures how well the model learned the
-generator's habits. The authentic sets also carry roughly 20 to 24 percent
-zero-entity negatives, which the synthetic corpus lacks entirely.
+Mixing 150 authentic calls into TRAIN (not synthetic only) is what the shipped
+keeper trained on: it narrows the synthetic-to-authentic domain gap. VAL and TEST
+are authentic-heavy so they measure real-world performance rather than how well
+the model learned the generator's habits; the authentic sets also carry ~20-24%
+zero-entity negatives, which the synthetic corpus lacks.
 
-The output format matches train_fulltext_majority.jsonl: one JSON object per
-line, {"input": <transcript>, "output": {"entities": {<label>: [<str>, ...]}}},
-written with ensure_ascii=False. All three source directories already use that
-schema, so records pass through verbatim.
+The 186 authentic val-source files are split 150 (train) + 36 (val); all
+authentic test-source files are held out as TEST and never seen in training.
 
-Runs are deterministic under SEED=42. The 50 synthetic val files are drawn
+The output format is one JSON object per line,
+{"input": <transcript>, "output": {"entities": {<label>: [<str>, ...]}}},
+written with ensure_ascii=False. All source directories already use that schema,
+so records pass through verbatim.
+
+Runs are deterministic under SEED=42. The 30 synthetic val files are drawn
 stratified by the difficulty tier encoded in each filename, so val is not
 accidentally dominated by one tier.
 
@@ -48,7 +53,8 @@ TEST_DIR = BASE / "test_data"
 
 SEED = 42
 N_TRAIN_SYNTH = 1000
-N_VAL_SYNTH = 50
+N_VAL_SYNTH = 30
+N_VAL_AUTH = 36   # of the authentic val-source files; the remainder (150) go to TRAIN
 
 TIERS = ("easy", "medium", "hard", "normal")
 
@@ -162,8 +168,14 @@ def main():
         print(f"ERROR: need {N_TRAIN_SYNTH + N_VAL_SYNTH} synthetic files, "
               f"found {len(synth)}")
         sys.exit(1)
+    if len(val_auth) < N_VAL_AUTH:
+        print(f"ERROR: need at least {N_VAL_AUTH} authentic val-source files, "
+              f"found {len(val_auth)}")
+        sys.exit(1)
 
-    # Draw the 50 synthetic val files, stratified by difficulty tier.
+    # -- synthetic split: draw N_VAL_SYNTH for val, stratified by difficulty tier
+    # (from the filename) so val is not dominated by one tier; the rest are the
+    # train pool.
     by_tier = defaultdict(list)
     for rec in synth:
         by_tier[tier_of(rec[0])].append(rec)
@@ -189,32 +201,40 @@ def main():
     rng.shuffle(train_synth)
     train_synth = train_synth[:N_TRAIN_SYNTH]
 
-    val = val_auth + val_synth
+    # -- authentic val-source split: N_VAL_AUTH -> val, the remainder -> train.
+    # Mixing these authentic calls into TRAIN is the mixed2 recipe -- it narrows
+    # the synthetic-to-authentic domain gap the model sees during training.
+    auth = sorted(val_auth, key=lambda r: r[0].name)
+    rng.shuffle(auth)
+    val_auth_sel = auth[:N_VAL_AUTH]
+    train_auth = auth[N_VAL_AUTH:]
+
+    # -- assemble the mixed2 splits.
+    train = train_synth + train_auth
+    rng.shuffle(train)
+    val = val_synth + val_auth_sel
 
     # Verify the splits are disjoint by full input text.
     import hashlib
     h = lambda recs: {hashlib.md5(o["input"].encode()).hexdigest() for _p, o in recs}
-    ht, hv, hs = h(train_synth), h(val), h(test_auth)
+    ht, hv, hs = h(train), h(val), h(test_auth)
     assert not (ht & hv), f"train/val overlap: {len(ht & hv)}"
     assert not (ht & hs), f"train/test overlap: {len(ht & hs)}"
     assert not (hv & hs), f"val/test overlap: {len(hv & hs)}"
 
-    write_jsonl(TRAIN_DIR / "train_mixed.jsonl", train_synth)
-    write_jsonl(VAL_DIR / "val_mixed.jsonl", val)
-    write_jsonl(TEST_DIR / "test_mixed.jsonl", test_auth)
-    (TEST_DIR / "test_mixed_files.txt").write_text(
+    write_jsonl(TRAIN_DIR / "train_mixed2.jsonl", train)
+    write_jsonl(VAL_DIR / "val_mixed2.jsonl", val)
+    write_jsonl(TEST_DIR / "test_mixed2.jsonl", test_auth)
+    (TEST_DIR / "test_mixed2_files.txt").write_text(
         "\n".join(p.name for p, _ in test_auth) + "\n", encoding="utf-8")
-    (VAL_DIR / "val_synthetic_files.txt").write_text(
-        "\n".join(sorted(val_names)) + "\n", encoding="utf-8")
 
-    report("TRAIN (synthetic only)", train_synth)
-    report("VAL (186 authentic + 50 synthetic)", val)
+    report(f"TRAIN ({N_TRAIN_SYNTH} synthetic + {len(train_auth)} authentic)", train)
+    report(f"VAL ({len(val_synth)} synthetic + {len(val_auth_sel)} authentic)", val)
     report("TEST (authentic, held out)", test_auth)
 
     print("\nWritten:")
-    for d, f in ((TRAIN_DIR, "train_mixed.jsonl"), (VAL_DIR, "val_mixed.jsonl"),
-                 (TEST_DIR, "test_mixed.jsonl"), (TEST_DIR, "test_mixed_files.txt"),
-                 (VAL_DIR, "val_synthetic_files.txt")):
+    for d, f in ((TRAIN_DIR, "train_mixed2.jsonl"), (VAL_DIR, "val_mixed2.jsonl"),
+                 (TEST_DIR, "test_mixed2.jsonl"), (TEST_DIR, "test_mixed2_files.txt")):
         print(f"  {d / f}")
     print("\nSplits verified disjoint by full-text hash.")
     print("TEST is authentic and never passed to the trainer.")
