@@ -28,13 +28,13 @@ for _p in (EVAL_DIR, PII_ROOT / "inference"):
         sys.path.insert(0, str(_p))
 
 from pipeline import (  # noqa: E402
-    MODEL_PATH, SYNTHETIC_LABELS, CANON, run_fulltext, run_windowed,
+    MODEL_PATH, SYNTHETIC_LABELS, STANDARD_LABEL, run_fulltext, run_windowed,
 )
 from matcher import match_entities_fixed  # noqa: E402
 from metrics import _prf  # noqa: E402
 
 THRESHOLD = 0.35
-CANON_MERGE = {"SG_ADDRESS_BLOCK_NUMBER": "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT_NUMBER": "SG_ADDRESS_UNIT"}
+LABEL_MERGE = {"SG_ADDRESS_BLOCK_NUMBER": "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT_NUMBER": "SG_ADDRESS_UNIT"}
 
 # The 9 reported labels: the 7 base labels plus the 2 this project added.
 BASE_REPORT_LABELS = ["EMAIL_ADDRESS", "SG_ADDRESS", "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT",
@@ -47,7 +47,7 @@ def build_cases():
     """Load the frozen held-out test set (419 authentic transcripts).
 
     Gold is a flat list of surface strings per lower-case label; this
-    canonicalises it to the [(text, CANON_LABEL), ...] shape the matcher expects.
+    canonicalises it to the [(text, STD_LABEL), ...] shape the matcher expects.
 
     NRIC gold is kept as-is (fragments included): the corpus intentionally tags
     NRIC pieces split across a pause, and the model is trained on them, so
@@ -59,7 +59,7 @@ def build_cases():
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             d = json.loads(line)
-            gold = [(t, CANON[label])
+            gold = [(t, STANDARD_LABEL[label])
                     for label, values in d["output"]["entities"].items()
                     for t in values]
             cases.append((d["input"], gold))
@@ -82,11 +82,11 @@ def evaluate(model, cases, labels, windowed=False):
         total_fp += fp
         total_fn += fn
         for label, count in tp_by_label.items():
-            per_label_tp[CANON_MERGE.get(label, label)] += count
+            per_label_tp[LABEL_MERGE.get(label, label)] += count
         for label, _text in errors_fp:
-            per_label_fp[CANON_MERGE.get(label, label)] += 1
+            per_label_fp[LABEL_MERGE.get(label, label)] += 1
         for label, _text in errors_fn:
-            per_label_fn[CANON_MERGE.get(label, label)] += 1
+            per_label_fn[LABEL_MERGE.get(label, label)] += 1
 
     return per_label_tp, per_label_fp, per_label_fn, total_tp, total_fp, total_fn
 

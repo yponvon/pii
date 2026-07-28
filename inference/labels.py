@@ -24,7 +24,7 @@ SYNTHETIC_EXTRA_LABELS = ["account_number", "full_name"]
 SYNTHETIC_LABELS = FINETUNED_LABELS + SYNTHETIC_EXTRA_LABELS
 
 # Model label (lower case) -> canonical reporting label (upper case).
-CANON = {
+STANDARD_LABEL = {
     "sg_phone_number": "SG_PHONE_NUMBER", "sg_contact_number": "SG_PHONE_NUMBER",
     "sg_address": "SG_ADDRESS", "sg_address_unit_number": "SG_ADDRESS_UNIT",
     "sg_address_block_number": "SG_ADDRESS_BLOCK", "sg_postal_code": "SG_POSTAL_CODE",
