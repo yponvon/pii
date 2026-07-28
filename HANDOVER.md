@@ -33,24 +33,26 @@ PIPELINE_OVERVIEW.md   Technical how-it-works, with data + balance tables
 HANDOVER.md            This document
 requirements.txt       Pinned dependencies (Python 3.11)
 
-finetuning/            Everything about training
-  data_prep/           Builders that turn raw transcripts into training splits
-  scripts/             train.py (the keeper trainer)
-inference/             Running and evaluating the model
-  harness/             redact_output.py (use the model), the benchmark, matcher, filters
-  leak_tests/          Business-facing residual-leak and account-redaction tests
+finetuning/            Make the model (training)
+  data_prep/           Split builders + generate_synthetic_data.py
+  scripts/             train.py (the keeper trainer), plot_loss.py
+inference/             Redact (the pipeline)
+  pipeline.py          Orchestration; + preprocessing.py, postprocessing.py, labels.py, redact.py
+evaluation/            Measure the model
+  run_benchmark.py     The 3-way benchmark; + benchmark_per_label.py, matcher.py, metrics.py
   results/             frozen_comparison.txt (the authoritative benchmark)
-utils/                 Shared scoring / content-filter helpers (scoring.py)
+  leak_tests/          Business-facing residual-leak and account-redaction tests
 models/finetuned_pii_9label/best/   The trained LoRA adapter (~13 MB)
 models/rule-based-gliner/redaction.py   Rule-based Presidio baseline (the 3rd benchmark arm)
+training_data/ val_data/ test_data/   One fake example.json each (real data offline; see DATA.md)
 ```
 
 **The three scripts that matter:**
 | Purpose | Script |
 |---|---|
 | Train the model | `finetuning/scripts/train.py` |
-| Redact a transcript (production entry point) | `inference/harness/redact_output.py` |
-| Score on the frozen benchmark | `inference/harness/run_frozen_comparison.py` |
+| Redact a transcript (production entry point) | `inference/redact.py` |
+| Score on the frozen benchmark | `evaluation/run_benchmark.py` |
 
 ---
 
@@ -61,7 +63,7 @@ python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 ```
 ```python
-from inference.harness.redact_output import load_finetuned, redact
+from inference.redact import load_finetuned, redact
 model = load_finetuned()
 print(redact(model, transcript, fmt="tagged"))
 ```
@@ -72,7 +74,7 @@ adapter is already in the repo.
 
 ## 4. Current results (frozen 419-transcript benchmark)
 
-Full table in `inference/results/frozen_comparison.txt`. Overall
+Full table in `evaluation/results/frozen_comparison.txt`. Overall
 precision / recall / F1 / **F2** (F2 weights recall 2× — a miss is a leak):
 
 | Method | all 9 labels |
@@ -137,13 +139,13 @@ back to the original text.
 
 ### 5d. Evaluation
 - **Frozen 419** authentic transcripts, held out from training.
-- **Lenient matcher** (`span_matcher.py`): exact and partial-containment matches
+- **Lenient matcher** (`evaluation/matcher.py`): exact and partial-containment matches
   count; address subtypes share a label group. It does the pred↔gold matching and
-  produces TP/FP/FN; the P/R/F1/F2 formulas live in `run_frozen_comparison.py`.
+  produces TP/FP/FN; the P/R/F1/F2 formulas live in `evaluation/run_benchmark.py`.
 - **F2** is the headline metric (recall-weighted) because a missed identifier is a
   leak. A **full-NRIC protection** roll-up complements it: a full NRIC only
   "leaks" if every piece stays exposed, so catching any one piece is safe.
-- Two **business-facing tests** in `inference/leak_tests/`: a residual-leak test
+- Two **business-facing tests** in `evaluation/leak_tests/`: a residual-leak test
   (does a full identifier survive as plain text?) and an account-redaction test.
 
 ---
@@ -175,7 +177,7 @@ back to the original text.
 
 The adapter is included, so retraining is optional.
 1. Place the offline training splits `train_mixed2.jsonl` / `val_mixed2.jsonl` in
-   `finetuning/splits/` (kept offline — real PII).
+   `training_data/` and `val_data/` (kept offline — real PII; see DATA.md).
 2. `python finetuning/scripts/train.py` (seed 42).
 
 The best adapter is written to `models/finetuned_pii_9label/best/`, which the
@@ -186,11 +188,11 @@ inference scripts load by default.
 ## 8. Reproducing the benchmark
 
 ```
-python inference/harness/run_frozen_comparison.py
+python evaluation/run_benchmark.py
 ```
 Scores baseline, rule-based, and fine-tuned on the frozen 419 and writes
-`inference/results/frozen_comparison.txt`. Requires the offline gold set at
-`data/frozen/test_gold_419.jsonl`.
+`evaluation/results/frozen_comparison.txt`. Requires the offline gold set at
+`test_data/test_gold_419.jsonl`.
 
 ---
 

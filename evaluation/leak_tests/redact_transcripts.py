@@ -8,11 +8,11 @@ import json, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
-sys.path.insert(0, str(ROOT / "inference" / "harness"))
-from redact_output import load_finetuned, redact                # noqa: E402
+sys.path.insert(0, str(ROOT / "inference"))
+from redact import load_finetuned, redact                # noqa: E402
 
-FROZEN = ROOT / "data" / "frozen" / "test_gold_419.jsonl"
-OUT = ROOT / "inference" / "results" / "leak_tests" / "redacted_all.jsonl"
+FROZEN = ROOT / "test_data" / "test_gold_419.jsonl"
+OUT = ROOT / "evaluation" / "results" / "leak_tests" / "redacted_all.jsonl"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 rows = [json.loads(l) for l in open(FROZEN)]

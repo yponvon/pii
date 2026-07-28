@@ -9,21 +9,21 @@ Overlapping predictions (e.g. a block number nested within an address) are
 reduced to the outermost span so a region is never redacted twice.
 
 Usage:
-    from redact_output import load_finetuned, redact
+    from redact import load_finetuned, redact
     model = load_finetuned()
     print(redact(model, transcript, fmt="tagged"))
 """
 import sys
 from pathlib import Path
 
-HARNESS_DIR = Path(__file__).resolve().parent
-if str(HARNESS_DIR) not in sys.path:
-    sys.path.insert(0, str(HARNESS_DIR))
+INFERENCE_DIR = Path(__file__).resolve().parent
+if str(INFERENCE_DIR) not in sys.path:
+    sys.path.insert(0, str(INFERENCE_DIR))
 
-from evaluate_finetuned import MODEL_PATH, SYNTHETIC_LABELS, run_windowed  # noqa: E402
+from pipeline import MODEL_PATH, SYNTHETIC_LABELS, run_windowed  # noqa: E402
 from gliner2 import GLiNER2  # noqa: E402
 
-DEFAULT_ADAPTER = HARNESS_DIR.parent.parent / "models" / "finetuned_pii_9label" / "best"
+DEFAULT_ADAPTER = INFERENCE_DIR.parent / "models" / "finetuned_pii_9label" / "best"
 THRESHOLD = 0.35
 
 
@@ -76,7 +76,7 @@ def redact(model, transcript, fmt="tagged", threshold=THRESHOLD, with_confidence
 if __name__ == "__main__":
     # Quick demo on a short synthetic transcript (no real data) so the model can
     # be tried end to end without the offline test set:
-    #     python inference/harness/redact_output.py
+    #     python inference/redact.py
     demo = (
         "SPEAKER_00: Good afternoon, may I have your name please?\n"
         "SPEAKER_01: Hi, it's Jason Lim.\n"

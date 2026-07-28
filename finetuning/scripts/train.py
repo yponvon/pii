@@ -24,7 +24,8 @@ from gliner2.training.trainer import GLiNER2Trainer, TrainingConfig
 
 MODEL_PATH = "fastino/gliner2-privacy-filter-PII-multi"
 _ROOT = Path(__file__).resolve().parents[2]
-SPLITS = _ROOT / "finetuning" / "splits"
+TRAIN_DATA = _ROOT / "training_data" / "train_mixed2.jsonl"
+VAL_DATA = _ROOT / "val_data" / "val_mixed2.jsonl"
 OUT = _ROOT / "models" / "finetuned_pii_9label"
 LOGS = _ROOT / "finetuning" / "logs"
 
@@ -46,8 +47,8 @@ def main() -> None:
     print(f"WORKABLE RUN (D config) -> {OUT}")
     model = GLiNER2.from_pretrained(MODEL_PATH)
     results = GLiNER2Trainer(model=model, config=cfg).train(
-        train_data=str(SPLITS / "train_mixed2.jsonl"),
-        eval_data=str(SPLITS / "val_mixed2.jsonl"),
+        train_data=str(TRAIN_DATA),
+        eval_data=str(VAL_DATA),
     )
     # Save the loss history and render the loss graph.
     try:

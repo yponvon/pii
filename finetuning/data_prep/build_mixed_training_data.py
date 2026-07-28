@@ -36,10 +36,15 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 BASE = Path(__file__).resolve().parents[2]
+# Source corpora (offline, real PII): the hand-authored synthetic transcripts and
+# the annotated authentic calls. See DATA.md for how the synthetic corpus is made.
 SYNTH_DIR = BASE / "data" / "synthetic"
 VAL_AUTH_DIR = BASE / "data" / "authentic_val"
 TEST_AUTH_DIR = BASE / "data" / "authentic_test"
-OUT_DIR = BASE / "finetuning" / "splits"
+# Built splits are written to the committed data folders (real files stay local).
+TRAIN_DIR = BASE / "training_data"
+VAL_DIR = BASE / "val_data"
+TEST_DIR = BASE / "test_data"
 
 SEED = 42
 N_TRAIN_SYNTH = 1000
@@ -194,12 +199,12 @@ def main():
     assert not (ht & hs), f"train/test overlap: {len(ht & hs)}"
     assert not (hv & hs), f"val/test overlap: {len(hv & hs)}"
 
-    write_jsonl(OUT_DIR / "train_mixed.jsonl", train_synth)
-    write_jsonl(OUT_DIR / "val_mixed.jsonl", val)
-    write_jsonl(OUT_DIR / "test_mixed.jsonl", test_auth)
-    (OUT_DIR / "test_mixed_files.txt").write_text(
+    write_jsonl(TRAIN_DIR / "train_mixed.jsonl", train_synth)
+    write_jsonl(VAL_DIR / "val_mixed.jsonl", val)
+    write_jsonl(TEST_DIR / "test_mixed.jsonl", test_auth)
+    (TEST_DIR / "test_mixed_files.txt").write_text(
         "\n".join(p.name for p, _ in test_auth) + "\n", encoding="utf-8")
-    (OUT_DIR / "val_synthetic_files.txt").write_text(
+    (VAL_DIR / "val_synthetic_files.txt").write_text(
         "\n".join(sorted(val_names)) + "\n", encoding="utf-8")
 
     report("TRAIN (synthetic only)", train_synth)
@@ -207,9 +212,10 @@ def main():
     report("TEST (authentic, held out)", test_auth)
 
     print("\nWritten:")
-    for f in ("train_mixed.jsonl", "val_mixed.jsonl", "test_mixed.jsonl",
-              "test_mixed_files.txt", "val_synthetic_files.txt"):
-        print(f"  {OUT_DIR / f}")
+    for d, f in ((TRAIN_DIR, "train_mixed.jsonl"), (VAL_DIR, "val_mixed.jsonl"),
+                 (TEST_DIR, "test_mixed.jsonl"), (TEST_DIR, "test_mixed_files.txt"),
+                 (VAL_DIR, "val_synthetic_files.txt")):
+        print(f"  {d / f}")
     print("\nSplits verified disjoint by full-text hash.")
     print("TEST is authentic and never passed to the trainer.")
 

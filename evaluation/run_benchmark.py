@@ -4,7 +4,7 @@ Scores baseline zero-shot GLiNER, rule-based presidio, and fine-tuned GLiNER
 against one frozen gold set so the resulting numbers are directly comparable.
 The comparison holds the following constant across all three methods:
 
-  * Gold set : data/frozen/test_gold_419.jsonl   (the same 419 files for all three)
+  * Gold set : test_data/test_gold_419.jsonl   (the same 419 files for all three)
   * Matcher  : match_entities_fixed              (the same matching logic for all three)
   * NRIC gold: full-format filter disabled       (frozen-path policy; fragments count)
   * Labels   : canonicalised to the same nine CANON labels for all three
@@ -24,12 +24,12 @@ FULL_NAME, so it is scored fairly across every label.
 Requirements:
   Run with the project virtual environment, which provides gliner2, presidio and
   the other dependencies (from the repository root):
-      ./venv/bin/python pii/inference/harness/run_frozen_comparison.py
+      ./venv/bin/python evaluation/run_benchmark.py
   The first run downloads the GLiNER base model from Hugging Face and caches it.
 
 Usage:
-  python run_frozen_comparison.py [ADAPTER_DIR] [-o OUTPUT]
-  python run_frozen_comparison.py --help
+  python run_benchmark.py [ADAPTER_DIR] [-o OUTPUT]
+  python run_benchmark.py --help
   ADAPTER_DIR defaults to the fine-tuned keeper's best checkpoint; if it does not exist,
   the fine-tuned method is skipped and only baseline and rule-based are scored.
 """
@@ -48,35 +48,36 @@ from typing import Callable, List, Tuple
 # it runs from any working directory and on any machine that has the repository
 # checked out, with no absolute paths to edit. The directory tree is:
 #     pii/
-#       inference/harness/run_frozen_comparison.py   this file
-#       inference/results/                           report is written here
-#       data/frozen/                                 the frozen gold set
+#       evaluation/run_benchmark.py                  this file
+#       evaluation/results/                          report is written here
+#       evaluation/{matcher,metrics}.py              matcher + scoring helpers
+#       test_data/test_gold_419.jsonl                the frozen gold set (offline)
+#       inference/                                   the detection pipeline
 #       models/finetuned_pii_9label/                 fine-tuned adapter
 #       models/rule-based-gliner/redaction.py        rule-based baseline
-#       utils/                                       scoring helpers
-HARNESS_DIR = Path(__file__).resolve().parent
-PII_ROOT = HARNESS_DIR.parent.parent
-UTILS_DIR = PII_ROOT / "utils"
+EVAL_DIR = Path(__file__).resolve().parent
+PII_ROOT = EVAL_DIR.parent
+INFERENCE_DIR = PII_ROOT / "inference"
 RULEBASED_REDACTION_PY = PII_ROOT / "models" / "rule-based-gliner" / "redaction.py"
 
-# The two sibling harness modules and the scoring helper are imported by
-# name, so their directories must be on sys.path before the imports below.
-for _path in (HARNESS_DIR, UTILS_DIR):
+# The pipeline (inference/) and the sibling matcher/metrics modules are imported
+# by name, so their directories must be on sys.path before the imports below.
+for _path in (EVAL_DIR, INFERENCE_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
-from evaluate_finetuned import (  # noqa: E402
+from pipeline import (  # noqa: E402
     CANON, MODEL_PATH, BASELINE_LABELS, SYNTHETIC_LABELS, run_windowed,
 )
-from span_matcher import match_entities_fixed  # noqa: E402
-from scoring import _prf  # noqa: E402
+from matcher import match_entities_fixed  # noqa: E402
+from metrics import _prf  # noqa: E402
 
 from gliner2 import GLiNER2
 
 # Fixed inputs and outputs.
-FROZEN = PII_ROOT / "data" / "frozen" / "test_gold_419.jsonl"          # the gold set
+FROZEN = PII_ROOT / "test_data" / "test_gold_419.jsonl"          # the gold set
 DEFAULT_ADAPTER = PII_ROOT / "models" / "finetuned_pii_9label" / "best"
-RESULTS = PII_ROOT / "inference" / "results" / "frozen_comparison.txt"  # text report
+RESULTS = PII_ROOT / "evaluation" / "results" / "frozen_comparison.txt"  # text report
 
 # Reported F-score weighting. For PII redaction a miss (a leak) is worse than an
 # over-redaction, so recall is weighted FBETA times as much as precision. F2 is
@@ -91,7 +92,7 @@ GLINER_THRESHOLD = 0.35
 # threshold to both would not make them comparable.
 RULEBASED_THRESHOLD = 0.5
 
-# Overlapping-window inference parameters (see run_windowed in evaluate_finetuned).
+# Overlapping-window inference parameters (see run_windowed in inference/pipeline.py).
 WIN_CHARS, OVERLAP = 1800, 400
 
 # The baseline model is zero-shot promptable, so it is queried with the full

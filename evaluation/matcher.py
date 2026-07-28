@@ -19,8 +19,8 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "utils"))
-from scoring import same_label_group  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from metrics import same_label_group  # noqa: E402
 
 
 def _clean(s: str) -> str:

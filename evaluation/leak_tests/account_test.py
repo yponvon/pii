@@ -10,12 +10,12 @@ import json, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
-sys.path.insert(0, str(ROOT / "inference" / "harness"))
-from evaluate_finetuned import FINETUNED_LABELS, run_windowed   # 7 base labels, no account_number
-from redact_output import load_finetuned                        # noqa: E402
+sys.path.insert(0, str(ROOT / "inference"))
+from pipeline import FINETUNED_LABELS, run_windowed   # 7 base labels, no account_number
+from redact import load_finetuned                        # noqa: E402
 
-frozen = [json.loads(l) for l in open(ROOT / "data" / "frozen" / "test_gold_419.jsonl")]
-OUT = ROOT / "inference" / "results" / "leak_tests" / "acct_detail.json"
+frozen = [json.loads(l) for l in open(ROOT / "test_data" / "test_gold_419.jsonl")]
+OUT = ROOT / "evaluation" / "results" / "leak_tests" / "acct_detail.json"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 model = load_finetuned()
 digits = lambda s: re.sub(r"\D", "", s)

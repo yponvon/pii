@@ -188,7 +188,7 @@ Loss curve rendered at `models/finetuned_pii_9label/loss.png`.
 
 ## 4. What a TEST transcript goes through at inference
 
-Canonical path = `run_windowed()` in `inference/harness/evaluate_finetuned.py`.
+Canonical path = `run_windowed()` in `inference/pipeline.py`.
 Order matters:
 
 ```
@@ -276,7 +276,7 @@ the two GLiNER methods; rule-based runs full-text as it has no context ceiling.)
 protection** roll-up (safe if ≥1 fragment is caught, since that breaks
 reconstruction). F2 is the headline because recall (leak-avoidance) is the goal.
 
-**Current results** (`inference/results/frozen_comparison.txt`),
+**Current results** (`evaluation/results/frozen_comparison.txt`),
 overall P/R/F1/**F2**:
 
 | method | all 9 (9-label prompt) | base 7 (7-label prompt) |
@@ -304,7 +304,7 @@ The rule-based method is scored with its account (bare 10-digit regex) and name
 
 ## 6. The two business-facing tests (complement the P/R/F1/F2 metric)
 
-See `pii/inference/leak_tests/README.md`. Both run the keeper on the frozen 419:
+See `pii/evaluation/leak_tests/README.md`. Both run the keeper on the frozen 419:
 1. **Residual-leak test** — does a *full* identifier survive as plain text? (lenient)
 2. **Account-redaction test** — in 7-label mode, how often is an account number
    redacted so completely the BU can't recover the customer?

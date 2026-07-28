@@ -1,17 +1,17 @@
 """
-benchmark_all_labels.py
+benchmark_per_label.py
 
 Per-label P/R/F1 for the fine-tuned model across all 9 entity types, scored on
-the frozen 419-file held-out test set (data/frozen/test_gold_419.jsonl, zero
-training exposure). Uses span_matcher.match_entities_fixed (the benchmark
+the frozen 419-file held-out test set (test_data/test_gold_419.jsonl, zero
+training exposure). Uses matcher.match_entities_fixed (the benchmark
 matcher) with the production postprocessing pipeline.
 
-This is the per-label companion to run_frozen_comparison.py, which produces the
+This is the per-label companion to run_benchmark.py, which produces the
 three-way (baseline / rule-based / fine-tuned) overall comparison on the same
 frozen set.
 
 Usage:
-  python3 benchmark_all_labels.py [adapter_dir | None-for-baseline] [--windowed]
+  python3 benchmark_per_label.py [adapter_dir | None-for-baseline] [--windowed]
 """
 
 import json
@@ -21,17 +21,17 @@ from collections import defaultdict
 
 from gliner2 import GLiNER2
 
-HARNESS_DIR = Path(__file__).resolve().parent
-PII_ROOT = HARNESS_DIR.parents[1]
-for _p in (HARNESS_DIR, PII_ROOT / "utils"):
+EVAL_DIR = Path(__file__).resolve().parent
+PII_ROOT = EVAL_DIR.parent
+for _p in (EVAL_DIR, PII_ROOT / "inference"):
     if str(_p) not in sys.path:
         sys.path.insert(0, str(_p))
 
-from evaluate_finetuned import (  # noqa: E402
+from pipeline import (  # noqa: E402
     MODEL_PATH, SYNTHETIC_LABELS, CANON, run_fulltext, run_windowed,
 )
-from span_matcher import match_entities_fixed  # noqa: E402
-from scoring import _prf  # noqa: E402
+from matcher import match_entities_fixed  # noqa: E402
+from metrics import _prf  # noqa: E402
 
 THRESHOLD = 0.35
 CANON_MERGE = {"SG_ADDRESS_BLOCK_NUMBER": "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT_NUMBER": "SG_ADDRESS_UNIT"}
@@ -54,7 +54,7 @@ def build_cases():
     filtering to full-format NRIC only would score correct fragment catches as
     false positives.
     """
-    path = PII_ROOT / "data" / "frozen" / "test_gold_419.jsonl"
+    path = PII_ROOT / "test_data" / "test_gold_419.jsonl"
     cases = []
     with open(path, encoding="utf-8") as fh:
         for line in fh:

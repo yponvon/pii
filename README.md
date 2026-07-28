@@ -42,16 +42,16 @@ first-run download from Hugging Face.
 ## Reproduce the results
 
 ```
-python inference/harness/run_frozen_comparison.py
+python evaluation/run_benchmark.py
 ```
 
 This scores the baseline, rule-based, and fine-tuned methods against the frozen
-gold set and writes a report to `inference/results/`.
+gold set and writes a report to `evaluation/results/`.
 
 ## Redact a transcript
 
 ```python
-from inference.harness.redact_output import load_finetuned, redact
+from inference.redact import load_finetuned, redact
 
 model = load_finetuned()
 print(redact(model, transcript, fmt="tagged"))
@@ -61,9 +61,8 @@ print(redact(model, transcript, fmt="tagged"))
 
 The trained adapter is already included, so retraining is optional. To retrain:
 
-1. Place the training splits `train_mixed2.jsonl` and `val_mixed2.jsonl` in
-   `finetuning/splits/`. These contain real PII, so they are kept offline and are
-   not part of this repository.
+1. Place `train_mixed2.jsonl` in `training_data/` and `val_mixed2.jsonl` in
+   `val_data/`. These contain real PII, so they are kept offline (see `DATA.md`).
 2. Run `python finetuning/scripts/train.py` (seed 42).
 
 The best adapter is written to `models/finetuned_pii_9label/best`, which is
@@ -88,10 +87,10 @@ See `PIPELINE_OVERVIEW.md` for the full description.
 ```
 1. finetuning/data_prep/build_mixed_training_data.py  → train_mixed2 / val_mixed2   (offline; real PII)
 2. finetuning/scripts/train.py                        → models/finetuned_pii_9label/best/   (LoRA adapter + loss.png)
-3. inference/harness/run_frozen_comparison.py         → inference/results/frozen_comparison.txt
+3. evaluation/run_benchmark.py         → evaluation/results/frozen_comparison.txt
         the 3-way benchmark: baseline vs rule-based vs fine-tuned, 419 frozen set, 9- and 7-label prompts
-4. inference/harness/benchmark_all_labels.py          → per-label P/R/F1 on the same 419 set
-5. inference/leak_tests/                               → residual-leak + account-redaction business tests
+4. evaluation/benchmark_per_label.py          → per-label P/R/F1 on the same 419 set
+5. evaluation/leak_tests/                               → residual-leak + account-redaction business tests
 ```
 
 Steps 1–2 are optional (the trained adapter ships). Step 3 produces the headline
@@ -100,18 +99,29 @@ results table above.
 ## Repository layout
 
 ```
-finetuning/
-  data_prep/      Training-split builders.
-  scripts/        LoRA training (train.py) and the loss-curve plot.
-inference/
-  harness/        Detection pipeline, redaction entry point, and benchmark.
-  leak_tests/     Residual-leak and account-redaction test scripts.
-  results/        Benchmark metric reports.
-utils/            Shared scoring / content-filter helpers (scoring.py).
+finetuning/          Make the model (training)
+  data_prep/         Split builders + generate_synthetic_data.py
+  scripts/           train.py, plot_loss.py
+inference/           Redact (the pipeline)
+  pipeline.py        Orchestration (run_windowed / run_fulltext)
+  preprocessing.py   Spoken-number normalization
+  postprocessing.py  Precision filters + recall boosters
+  labels.py          Label lists + the CANON name map
+  redact.py          Production entry point
+evaluation/          Measure the model
+  run_benchmark.py   The 3-way benchmark
+  benchmark_per_label.py
+  matcher.py         Pred-vs-gold matcher
+  metrics.py         P/R/F1 + label-group helpers
+  results/           frozen_comparison.txt
+  leak_tests/        Residual-leak + account-redaction tests
 models/
-  finetuned_pii_9label/best/   The fine-tuned LoRA adapter (the keeper).
-  rule-based-gliner/           The rule-based Presidio baseline (redaction.py).
+  finetuned_pii_9label/best/   The fine-tuned LoRA adapter (the keeper)
+  rule-based-gliner/           The rule-based Presidio baseline (redaction.py)
+training_data/ val_data/ test_data/   One fake example.json each (real data offline)
 ```
+
+See `DATA.md` for the data shape and how the synthetic corpus was generated.
 
 ## Data and privacy
 

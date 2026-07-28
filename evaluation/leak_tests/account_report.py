@@ -15,11 +15,11 @@ import json, glob, os, html
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
-LT = ROOT / "inference" / "results" / "leak_tests"
+LT = ROOT / "evaluation" / "results" / "leak_tests"
 COMPLETE_DIGITS = 8
 
 detail = json.load(open(LT / "acct_detail.json"))
-frozen = [json.loads(l) for l in open(ROOT / "data" / "frozen" / "test_gold_419.jsonl")]
+frozen = [json.loads(l) for l in open(ROOT / "test_data" / "test_gold_419.jsonl")]
 cust = {json.load(open(f))["input"]: os.path.basename(f)[:-5]
         for f in glob.glob(str(ROOT / "data" / "authentic_test" / "*.json"))}
 

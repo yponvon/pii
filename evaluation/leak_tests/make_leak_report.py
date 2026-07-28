@@ -9,7 +9,7 @@ import json, glob, os, html, re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
-LT = ROOT / "inference" / "results" / "leak_tests"
+LT = ROOT / "evaluation" / "results" / "leak_tests"
 
 leaks = {}
 for f in glob.glob(str(LT / "judge_result_*.json")):
@@ -20,7 +20,7 @@ red = {json.loads(l)["line"]: json.loads(l)["redacted"] for l in open(LT / "reda
 # customer_id via authentic_test filename (frozen carries no filename)
 cust = {json.load(open(f))["input"]: os.path.basename(f)[:-5]
         for f in glob.glob(str(ROOT / "data" / "authentic_test" / "*.json"))}
-frozen = [json.loads(l) for l in open(ROOT / "data" / "frozen" / "test_gold_419.jsonl")]
+frozen = [json.loads(l) for l in open(ROOT / "test_data" / "test_gold_419.jsonl")]
 fname = {i: cust.get(d["input"], "(unmatched)") for i, d in enumerate(frozen)}
 cid = lambda i: fname[i].split("_")[-2] if fname[i] != "(unmatched)" else None
 
