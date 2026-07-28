@@ -1,14 +1,17 @@
 """
 benchmark_all_labels.py
 
-The authoritative benchmark for the /goal task: per-label P/R/F1 across
-all 7 entity types, on the two clean held-out test sets (8-file hard +
-56-file majority, 64 files total, zero training exposure for any model
-variant). Uses span_matcher's match_entities_fixed (the corrected
-matching logic) and WITH postprocessing (the production configuration).
+Per-label P/R/F1 for the fine-tuned model across all 9 entity types, scored on
+the frozen 419-file held-out test set (data/frozen/test_gold_419.jsonl, zero
+training exposure). Uses span_matcher.match_entities_fixed (the benchmark
+matcher) with the production postprocessing pipeline.
+
+This is the per-label companion to run_frozen_comparison.py, which produces the
+three-way (baseline / rule-based / fine-tuned) overall comparison on the same
+frozen set.
 
 Usage:
-  python3 benchmark_all_labels.py <adapter_dir_or_None_for_baseline>
+  python3 benchmark_all_labels.py [adapter_dir | None-for-baseline] [--windowed]
 """
 
 import json
@@ -16,73 +19,42 @@ import sys
 from pathlib import Path
 from collections import defaultdict
 
-import pandas as pd
-
-sys.path.insert(0, ".")
-from evaluate_finetuned import (  # noqa: E402
-    DATA_DIR, MODEL_PATH, FINETUNED_LABELS, SYNTHETIC_LABELS, run_fulltext, load_test_cases,
-)
-from evaluate_majority import load_majority_test_cases  # noqa: E402
-from span_matcher import match_entities_fixed  # noqa: E402
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "utils"))
-from eval_pipeline import ORIG_DIR, GOLD_DIR, extract_gold_entities, _prf  # noqa: E402
-
 from gliner2 import GLiNER2
+
+HARNESS_DIR = Path(__file__).resolve().parent
+PII_ROOT = HARNESS_DIR.parents[1]
+for _p in (HARNESS_DIR, PII_ROOT / "utils"):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
+
+from evaluate_finetuned import (  # noqa: E402
+    MODEL_PATH, SYNTHETIC_LABELS, CANON, run_fulltext, run_windowed,
+)
+from span_matcher import match_entities_fixed  # noqa: E402
+from scoring import _prf  # noqa: E402
 
 THRESHOLD = 0.35
 CANON_MERGE = {"SG_ADDRESS_BLOCK_NUMBER": "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT_NUMBER": "SG_ADDRESS_UNIT"}
 
-# The 7 base labels reported by this benchmark.
+# The 9 reported labels: the 7 base labels plus the 2 this project added.
 BASE_REPORT_LABELS = ["EMAIL_ADDRESS", "SG_ADDRESS", "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT",
                       "SG_NRIC_FIN", "SG_PHONE_NUMBER", "SG_POSTAL_CODE"]
-# The 2 labels added by the synthetic corpus. Reported only in --synthetic mode;
-# see the note in main() about gold availability.
-SYNTHETIC_EXTRA_REPORT_LABELS = ["ACCOUNT_NUMBER", "FULL_NAME"]
-
-# Only full-format NRIC/FIN is scored as gold; partial 3/4-digit+letter fragments
-# are ignored (a full NRIC is [STFG] + 7 digits + a checksum letter).
-import re  # noqa: E402
-_FULL_NRIC_RE = re.compile(r'^[STFG]\d{7}[A-Z]$')
+NEW_REPORT_LABELS = ["ACCOUNT_NUMBER", "FULL_NAME"]
+ALL_REPORT_LABELS = BASE_REPORT_LABELS + NEW_REPORT_LABELS
 
 
-def _is_full_nric_gold(text):
-    stripped = re.sub(r'[\s\-]', '', text).upper()
-    return bool(_FULL_NRIC_RE.match(stripped))
+def build_cases():
+    """Load the frozen held-out test set (419 authentic transcripts).
 
+    Gold is a flat list of surface strings per lower-case label; this
+    canonicalises it to the [(text, CANON_LABEL), ...] shape the matcher expects.
 
-def _filter_gold(gold):
-    return [(t, l) for t, l in gold if l != "SG_NRIC_FIN" or _is_full_nric_gold(t)]
-
-
-def build_benchmark_cases():
-    test_files = Path(DATA_DIR / "test_files.txt").read_text().strip().splitlines()
-    hard8_cases = load_test_cases(test_files)
-    hard8_text = [(" ".join(rows), _filter_gold(gold)) for _f, rows, gold in hard8_cases]
-    majority_cases = [(text, _filter_gold(gold)) for text, gold in load_majority_test_cases()]
-    return hard8_text + majority_cases
-
-
-def build_synthetic_cases():
-    """Held-out test split of the synthetic corpus (test_mixed2.jsonl, built
-    by build_synthetic_training_data.py). Gold there is a flat list of strings
-    per lower-case label, so it is canonicalised here to the same
-    [(text, CANON_LABEL), ...] shape the other benchmark sets use.
-
-    The SG_NRIC_FIN full-format gold filter is deliberately NOT applied here.
-
-    Rationale (decided 2026-07-21): the synthetic corpus intentionally tags NRIC
-    fragments split across a pause (e.g. 'S-1-2-3-4' + '5-6-7-A' alongside the
-    joined 'S1234567A'), and the model is TRAINED on all of them. Applying
-    _filter_gold() would discard 359 of 586 test-set NRIC gold entries (61%),
-    so every fragment the model correctly recovers would be scored as a false
-    positive -- penalising it for exactly the behaviour the corpus teaches.
-
-    The legacy path (build_benchmark_cases) still applies _filter_gold(), so the
-    real-data benchmark numbers remain directly comparable to the existing
-    309-example checkpoint. The two eval paths are each internally consistent."""
-    from evaluate_finetuned import CANON  # noqa: PLC0415  (local: keeps module import surface unchanged)
-    path = Path(__file__).resolve().parents[2] / "data" / "frozen" / "test_gold_419.jsonl"
+    NRIC gold is kept as-is (fragments included): the corpus intentionally tags
+    NRIC pieces split across a pause, and the model is trained on them, so
+    filtering to full-format NRIC only would score correct fragment catches as
+    false positives.
+    """
+    path = PII_ROOT / "data" / "frozen" / "test_gold_419.jsonl"
     cases = []
     with open(path, encoding="utf-8") as fh:
         for line in fh:
@@ -94,8 +66,7 @@ def build_synthetic_cases():
     return cases
 
 
-def evaluate(model, cases, labels=FINETUNED_LABELS, windowed=False):
-    from evaluate_finetuned import run_windowed  # noqa: PLC0415
+def evaluate(model, cases, labels, windowed=False):
     per_label_tp = defaultdict(int)
     per_label_fp = defaultdict(int)
     per_label_fn = defaultdict(int)
@@ -121,10 +92,7 @@ def evaluate(model, cases, labels=FINETUNED_LABELS, windowed=False):
 
 
 def main():
-    args = [a for a in sys.argv[1:]]
-    synthetic = "--synthetic" in args
-    if synthetic:
-        args.remove("--synthetic")
+    args = list(sys.argv[1:])
     windowed = "--windowed" in args
     if windowed:
         args.remove("--windowed")
@@ -137,24 +105,13 @@ def main():
     else:
         print("Using BASE model (no adapter -- zero-shot baseline)")
 
-    if synthetic:
-        # 9-label mode, scored on the held-out synthetic test split. The legacy
-        # hard8+majority gold has NO account_number/full_name annotations, so
-        # those two labels can only be measured here.
-        cases = build_synthetic_cases()
-        query_labels = SYNTHETIC_LABELS
-        all_labels = BASE_REPORT_LABELS + SYNTHETIC_EXTRA_REPORT_LABELS
-        print(f"Benchmark set: {len(cases)} files (held-out synthetic test split, 9 labels)")
-    else:
-        cases = build_benchmark_cases()
-        query_labels = FINETUNED_LABELS
-        all_labels = BASE_REPORT_LABELS
-        print(f"Benchmark set: {len(cases)} files (8-file hard + 56-file majority)")
-
+    cases = build_cases()
+    print(f"Benchmark set: {len(cases)} files (frozen held-out test, 9 labels)")
     if windowed:
         print("Inference: OVERLAPPING WINDOWS (1800-char windows, 400 overlap)")
+
     per_label_tp, per_label_fp, per_label_fn, total_tp, total_fp, total_fn = evaluate(
-        model, cases, query_labels, windowed=windowed
+        model, cases, SYNTHETIC_LABELS, windowed=windowed
     )
 
     print()
@@ -162,7 +119,7 @@ def main():
     print("PER-LABEL BENCHMARK RESULTS")
     print("=" * 90)
     all_pass = True
-    for label in all_labels:
+    for label in ALL_REPORT_LABELS:
         tp = per_label_tp[label]
         fp = per_label_fp[label]
         fn = per_label_fn[label]
@@ -176,7 +133,7 @@ def main():
     print()
     print(f"OVERALL: TP={total_tp} FP={total_fp} FN={total_fn}  P={p:.4f}  R={r:.4f}  F1={f:.4f}")
     print()
-    print(f"ALL {len(all_labels)} LABELS PASS (P>0.8, R>0.8, F1>0.8): {all_pass}")
+    print(f"ALL {len(ALL_REPORT_LABELS)} LABELS PASS (P>0.8, R>0.8, F1>0.8): {all_pass}")
 
 
 if __name__ == "__main__":

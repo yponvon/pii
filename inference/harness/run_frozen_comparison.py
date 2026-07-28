@@ -51,11 +51,13 @@ from typing import Callable, List, Tuple
 #       inference/harness/run_frozen_comparison.py   this file
 #       inference/results/                           report is written here
 #       data/frozen/                                 the frozen gold set
-#       models/                                      fine-tuned adapters
-#       utils/                                       rule-based redactor + scoring helpers
+#       models/finetuned_pii_9label/                 fine-tuned adapter
+#       models/rule-based-gliner/redaction.py        rule-based baseline
+#       utils/                                       scoring helpers
 HARNESS_DIR = Path(__file__).resolve().parent
 PII_ROOT = HARNESS_DIR.parent.parent
 UTILS_DIR = PII_ROOT / "utils"
+RULEBASED_REDACTION_PY = PII_ROOT / "models" / "rule-based-gliner" / "redaction.py"
 
 # The two sibling harness modules and the scoring helper are imported by
 # name, so their directories must be on sys.path before the imports below.
@@ -67,7 +69,7 @@ from evaluate_finetuned import (  # noqa: E402
     CANON, MODEL_PATH, BASELINE_LABELS, SYNTHETIC_LABELS, run_windowed,
 )
 from span_matcher import match_entities_fixed  # noqa: E402
-from eval_pipeline import _prf  # noqa: E402
+from scoring import _prf  # noqa: E402
 
 from gliner2 import GLiNER2
 
@@ -146,14 +148,14 @@ NRIC_LABEL = "SG_NRIC_FIN"
 
 
 def load_pii_redactor():
-    """Load and return the PIIRedactor class from utils/redaction.py.
+    """Load and return the PIIRedactor class from models/rule-based-gliner/redaction.py.
 
     Loaded by explicit file location rather than a bare ``import redaction`` so
     the reference is always this single file, independent of sys.path import
     order. redaction.py imports only installed packages (Presidio + GLiNER2), so
     it loads correctly in isolation.
     """
-    redaction_py = UTILS_DIR / "redaction.py"
+    redaction_py = RULEBASED_REDACTION_PY
     spec = importlib.util.spec_from_file_location("presidio_redaction", redaction_py)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module

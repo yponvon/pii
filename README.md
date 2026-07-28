@@ -83,18 +83,34 @@ drops repeated occurrences ("read-backs") that the model detects correctly but
 that must still be redacted; reading the raw predictions keeps every occurrence.
 See `PIPELINE_OVERVIEW.md` for the full description.
 
+## End-to-end flow
+
+```
+1. finetuning/data_prep/build_mixed_training_data.py  → train_mixed2 / val_mixed2   (offline; real PII)
+2. finetuning/scripts/train.py                        → models/finetuned_pii_9label/best/   (LoRA adapter + loss.png)
+3. inference/harness/run_frozen_comparison.py         → inference/results/frozen_comparison.txt
+        the 3-way benchmark: baseline vs rule-based vs fine-tuned, 419 frozen set, 9- and 7-label prompts
+4. inference/harness/benchmark_all_labels.py          → per-label P/R/F1 on the same 419 set
+5. inference/leak_tests/                               → residual-leak + account-redaction business tests
+```
+
+Steps 1–2 are optional (the trained adapter ships). Step 3 produces the headline
+results table above.
+
 ## Repository layout
 
 ```
+finetuning/
+  data_prep/      Training-split builders.
+  scripts/        LoRA training (train.py) and the loss-curve plot.
 inference/
   harness/        Detection pipeline, redaction entry point, and benchmark.
   leak_tests/     Residual-leak and account-redaction test scripts.
   results/        Benchmark metric reports.
-finetuning/
-  scripts/        LoRA training scripts.
-  data_prep/      Training-split builders.
-external/         Rule-based Presidio system and evaluation helpers.
-models/           The fine-tuned keeper adapter.
+utils/            Shared scoring / content-filter helpers (scoring.py).
+models/
+  finetuned_pii_9label/best/   The fine-tuned LoRA adapter (the keeper).
+  rule-based-gliner/           The rule-based Presidio baseline (redaction.py).
 ```
 
 ## Data and privacy

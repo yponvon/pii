@@ -1,37 +1,28 @@
 """
-Evaluate the LoRA fine-tuned variants against the rule-based baseline.
+Inference pipeline for the fine-tuned PII model.
 
-Scores the full-text and windowed fine-tuned models against the rule-based
-baseline on the same held-out test files (test_files.txt) so the comparison
-is fair. A confidence-threshold sweep is run for every model: in this
-production setting missed PII is worse than over-redaction, so recall is
-weighted more heavily than precision, and a single operating point is not
-enough. The sweep exposes the recall-favoring end of each curve as well as
-the balanced-F1 point.
+Turns a raw transcript into (text, label) entity predictions through the
+production path: spoken-number normalization, overlapping-window inference,
+per-label precision filters, and regex recall boosters. The two entry points
+are run_windowed() (the canonical path, character-overlap windows) and
+run_fulltext() (single-pass, used for short text and the rule-based baseline).
 
-Usage:
-  python3 evaluate_finetuned.py
+This module is imported by the benchmark (run_frozen_comparison.py,
+benchmark_all_labels.py), the redaction entry point (redact_output.py), and the
+leak tests; it is not run directly.
 """
 
 import re
 import sys
 from pathlib import Path
 
-import pandas as pd
-from gliner2 import GLiNER2
-
 _PII_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_PII_ROOT / "utils"))
-from eval_pipeline import (  # noqa: E402
-    ORIG_DIR, GOLD_DIR, extract_gold_entities, match_entities, _prf,
+from scoring import (  # noqa: E402
     _is_valid_nric, _passes_content_filter, _ADDR_CONTEXT_RE, _POSTAL6_RE,
 )
 
-DATA_DIR = _PII_ROOT / "finetuning" / "splits"
 MODEL_PATH = "fastino/gliner2-privacy-filter-PII-multi"
-WINDOW = 2
-
-THRESHOLDS = [0.20, 0.35, 0.50]  # a low, recall-favoring point plus the balanced-F1 region
 
 # -- labels ---------------------------------------------------------------
 # The zero-shot baseline needs sg_contact_number queried as a synonym of
@@ -272,58 +263,6 @@ def passes_block_context_filter(text, start, end, full_text, address_spans):
         if abs(a_start - end) <= _BLOCK_CONTEXT_WINDOW or abs(start - a_end) <= _BLOCK_CONTEXT_WINDOW:
             return True
     return False
-
-
-# -- windowing (same construction as prepare_training_data.py) ------------
-
-def build_window(rows, i, window):
-    win_start = max(0, i - window)
-    win_end = min(len(rows), i + window + 1)
-    window_rows = rows[win_start:win_end]
-    combined = ""
-    row_ranges = []
-    for j, text in enumerate(window_rows):
-        start = len(combined)
-        combined += text
-        row_ranges.append((start, len(combined)))
-        if j < len(window_rows) - 1:
-            combined += "\n"
-    target_start, target_end = row_ranges[i - win_start]
-    return combined, target_start, target_end
-
-
-def clamp_spans(result, target_start, target_end):
-    spans = []
-    for label, entities in result["entities"].items():
-        for e in entities:
-            local_start = max(e["start"], target_start) - target_start
-            local_end = min(e["end"], target_end) - target_start
-            if local_start < local_end:
-                spans.append((local_start, local_end, label))
-    return spans
-
-
-def fallback_spans(target_text, result, combined):
-    spans = []
-    for label, entities in result["entities"].items():
-        for e in entities:
-            value = combined[e["start"]:e["end"]]
-            if not value:
-                continue
-            if value in target_text:
-                start = target_text.index(value)
-                spans.append((start, start + len(value), label))
-                continue
-            digit_seqs = list(dict.fromkeys(re.findall(r'\d+', value)))
-            positions = []
-            for seq in digit_seqs:
-                for m in re.finditer(re.escape(seq), target_text):
-                    positions.append((m.start(), m.end()))
-            if positions:
-                start = min(p[0] for p in positions)
-                end = max(p[1] for p in positions)
-                spans.append((start, end, label))
-    return spans
 
 
 # -- SG_NRIC_FIN recall booster ---------------------------------------------
@@ -693,111 +632,3 @@ def run_windowed(model, full_text, labels, threshold, win_chars=1800, overlap=40
             continue
         out.append((text, canon, o0, o1, conf) if return_spans else (text, canon))
     return out
-
-
-def run_windowed_rows(model, rows, labels, threshold, window=WINDOW):
-    # Legacy row-based windowing, used only by the self-test main() below. The
-    # canonical windowing is run_windowed() above (character overlap,
-    # absolute-span dedup); prefer it for the benchmark.
-    all_results = []
-    for i in range(len(rows)):
-        combined, target_start, target_end = build_window(rows, i, window)
-        result = model.extract_entities(combined, labels, threshold=threshold, include_spans=True)
-        all_results.append((result, combined, target_start, target_end))
-
-    entities = []
-    for i in range(len(rows)):
-        result, combined, target_start, target_end = all_results[i]
-        spans = clamp_spans(result, target_start, target_end)
-        if not spans:
-            spans = fallback_spans(rows[i], result, combined)
-        for start, end, raw_label in spans:
-            text = rows[i][start:end] if end <= len(rows[i]) else combined[start:end]
-            text = text.strip()
-            canon = CANON[raw_label]
-            if text and passes_validity(text, canon):
-                entities.append((text, canon))
-    full_text = " ".join(rows)
-    spans_for_postal = []  # windowed spans are not in full_text coordinates; the postal booster runs on full_text separately
-    for ms, me, lbl in find_postal_codes_extended(full_text, spans_for_postal):
-        entities.append((full_text[ms:me], "SG_POSTAL_CODE"))
-    return entities
-
-
-def load_test_cases(test_files):
-    cases = []
-    for fname in test_files:
-        orig_df = pd.read_csv(ORIG_DIR / fname).rename(columns={"istart": "start"})
-        gold_df = pd.read_csv(GOLD_DIR / fname).rename(columns={"istart": "start"})
-        rows = orig_df["text"].fillna("").astype(str).tolist()
-        gold = extract_gold_entities(orig_df, gold_df)
-        cases.append((fname, rows, gold))
-    return cases
-
-
-def evaluate(name, predict_fn, cases, labels, threshold):
-    total_tp = total_fp = total_fn = 0
-    for _fname, rows, gold in cases:
-        pred = predict_fn(rows, labels, threshold)
-        tp, fp, fn, _, _, _ = match_entities(pred, gold)
-        total_tp += tp
-        total_fp += fp
-        total_fn += fn
-    p, r, f = _prf(total_tp, total_fp, total_fn)
-    print(f"{name:<28} thresh={threshold:.2f}  TP={total_tp:>3} FP={total_fp:>3} FN={total_fn:>3}  "
-          f"P={p:.4f}  R={r:.4f}  F1={f:.4f}")
-
-
-def main():
-    test_files = Path(DATA_DIR / "test_files.txt").read_text().strip().splitlines()
-    print(f"Held-out test files ({len(test_files)}): {test_files}\n")
-    cases = load_test_cases(test_files)
-
-    # -- baseline (zero-shot + postprocessing) --
-    baseline_model = GLiNER2.from_pretrained(MODEL_PATH)
-
-    def baseline_predict(rows, labels, threshold):
-        full_text = " ".join(rows)
-        return run_fulltext(baseline_model, full_text, labels, threshold)
-
-    print("=== BASELINE (zero-shot + postprocessing) ===")
-    for t in THRESHOLDS:
-        evaluate("baseline", baseline_predict, cases, BASELINE_LABELS, t)
-    print()
-
-    # -- Variant A: full-text fine-tuned --
-    fulltext_adapter = DATA_DIR / "lora_fulltext_output" / "best"
-    if fulltext_adapter.exists():
-        ft_model_a = GLiNER2.from_pretrained(MODEL_PATH)
-        ft_model_a.load_adapter(str(fulltext_adapter))
-
-        def variant_a_predict(rows, labels, threshold):
-            full_text = " ".join(rows)
-            return run_fulltext(ft_model_a, full_text, labels, threshold)
-
-        print("=== VARIANT A (fine-tuned, full-text) ===")
-        for t in THRESHOLDS:
-            evaluate("variant_a_fulltext", variant_a_predict, cases, FINETUNED_LABELS, t)
-        print()
-    else:
-        print(f"Variant A adapter not found at {fulltext_adapter}, skipping.\n")
-
-    # -- Variant B: windowed fine-tuned --
-    windowed_adapter = DATA_DIR / "lora_windowed_output" / "best"
-    if windowed_adapter.exists():
-        ft_model_b = GLiNER2.from_pretrained(MODEL_PATH)
-        ft_model_b.load_adapter(str(windowed_adapter))
-
-        def variant_b_predict(rows, labels, threshold):
-            return run_windowed_rows(ft_model_b, rows, labels, threshold)
-
-        print("=== VARIANT B (fine-tuned, windowed) ===")
-        for t in THRESHOLDS:
-            evaluate("variant_b_windowed", variant_b_predict, cases, FINETUNED_LABELS, t)
-        print()
-    else:
-        print(f"Variant B adapter not found at {windowed_adapter}, skipping.\n")
-
-
-if __name__ == "__main__":
-    main()

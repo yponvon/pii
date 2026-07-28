@@ -40,8 +40,9 @@ inference/             Running and evaluating the model
   harness/             redact_output.py (use the model), the benchmark, matcher, filters
   leak_tests/          Business-facing residual-leak and account-redaction tests
   results/             frozen_comparison.txt (the authoritative benchmark)
-utils/                 Rule-based baseline (redaction.py) + scoring helpers (eval_pipeline.py)
+utils/                 Shared scoring / content-filter helpers (scoring.py)
 models/finetuned_pii_9label/best/   The trained LoRA adapter (~13 MB)
+models/rule-based-gliner/redaction.py   Rule-based Presidio baseline (the 3rd benchmark arm)
 ```
 
 **The three scripts that matter:**
@@ -229,5 +230,6 @@ the working tree, which contains the offline data.
   its default output formatter drops repeated values — use `format_results=False`.
 - **Training hardware:** on Apple MPS a full run is ~6–7h. A CUDA GPU cuts this to
   well under an hour.
-- **Rule-based baseline** (`utils/redaction.py`) is the company's Presidio-based
-  reference redactor, kept here as the third benchmark arm; treat it as read-only.
+- **Rule-based baseline** (`models/rule-based-gliner/redaction.py`) is the
+  company's Presidio-based reference redactor, kept here as the third benchmark
+  arm; treat it as read-only.

@@ -1,13 +1,13 @@
 """Match predicted entities to gold entities by match quality.
 
-Provides a drop-in replacement for eval_pipeline.match_entities() that
-resolves ambiguous overlaps deterministically. The original matcher walks
-predictions in list order and assigns each to the first overlapping gold
-entry in the same label group. Because address subtypes (SG_ADDRESS,
-SG_ADDRESS_BLOCK, SG_ADDRESS_UNIT, SG_POSTAL_CODE) share a label group for
-lenient scoring, a broad prediction such as "123A Example Road" can
-claim a gold entry intended for a tighter prediction such as "123A", which
-leaves the tighter prediction unmatched and scores both as errors.
+This is the matcher the benchmark uses. It resolves ambiguous overlaps
+deterministically. A naive matcher that walks predictions in list order and
+assigns each to the first overlapping gold entry in the same label group has a
+problem: because address subtypes (SG_ADDRESS, SG_ADDRESS_BLOCK,
+SG_ADDRESS_UNIT, SG_POSTAL_CODE) share a label group for lenient scoring, a
+broad prediction such as "123A Example Road" can claim a gold entry intended
+for a tighter prediction such as "123A", which leaves the tighter prediction
+unmatched and scores both as errors.
 
 This matcher instead builds every valid (prediction, gold) candidate pair,
 scores each pair by match quality, and assigns pairs greedily from best
@@ -20,7 +20,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "utils"))
-from eval_pipeline import same_label_group  # noqa: E402
+from scoring import same_label_group  # noqa: E402
 
 
 def _clean(s: str) -> str:
@@ -55,8 +55,7 @@ def match_quality(pred_text: str, gold_text: str) -> float:
 def match_entities_fixed(pred, gold):
     """Match predictions to gold entries and tally scoring outcomes.
 
-    Shares the signature and return shape of eval_pipeline.match_entities,
-    but resolves ambiguous overlaps by match quality rather than list order.
+    Resolves ambiguous overlaps by match quality rather than list order.
 
     Args:
         pred: Sequence of (text, label) predicted entities.
