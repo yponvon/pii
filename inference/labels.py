@@ -2,7 +2,7 @@
 labels.py
 
 Label configuration for the PII pipeline: the query-label lists sent to the
-model, the canonical-name map (model label -> reporting label), and the base
+model, the normalized-name map (model label -> reporting label), and the base
 model path. Kept separate so both the pipeline and the benchmark import the same
 single source of truth.
 """
@@ -18,13 +18,16 @@ MODEL_PATH = "fastino/gliner2-privacy-filter-PII-multi"
 
 BASELINE_LABELS = ["sg_phone_number", "sg_contact_number", "sg_address", "sg_address_unit_number",
                    "sg_address_block_number", "sg_postal_code", "email_address", "sg_nric_fin"]
+
 FINETUNED_LABELS = ["sg_phone_number", "sg_address", "sg_address_unit_number",
                     "sg_address_block_number", "sg_postal_code", "email_address", "sg_nric_fin"]
+
 SYNTHETIC_EXTRA_LABELS = ["account_number", "full_name"]
+
 SYNTHETIC_LABELS = FINETUNED_LABELS + SYNTHETIC_EXTRA_LABELS
 
-# Model label (lower case) -> canonical reporting label (upper case).
-STANDARD_LABEL = {
+# Model label (lower case) -> normalized reporting label (upper case).
+NORMALIZED_LABEL = {
     "sg_phone_number": "SG_PHONE_NUMBER", "sg_contact_number": "SG_PHONE_NUMBER",
     "sg_address": "SG_ADDRESS", "sg_address_unit_number": "SG_ADDRESS_UNIT",
     "sg_address_block_number": "SG_ADDRESS_BLOCK", "sg_postal_code": "SG_POSTAL_CODE",
@@ -33,7 +36,7 @@ STANDARD_LABEL = {
     "account_number": "ACCOUNT_NUMBER", "full_name": "FULL_NAME",
 }
 
-# Canonical label -> the label name the content filter keys on.
+# Normalized label -> the label name the content filter keys on.
 _FILTER_LABEL = {
     "SG_PHONE_NUMBER": "SG_PHONE_NUMBER", "SG_ADDRESS": "SG_ADDRESS",
     "SG_ADDRESS_UNIT": "SG_ADDRESS_UNIT_NUMBER", "SG_ADDRESS_BLOCK": "SG_ADDRESS_BLOCK_NUMBER",

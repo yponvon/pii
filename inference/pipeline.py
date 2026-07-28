@@ -6,7 +6,7 @@ predictions. Orchestration only — the pieces live in sibling modules:
 
     preprocessing.py   spoken-number normalization (word -> digit)
     postprocessing.py  precision filters + recall boosters (clean up model output)
-    labels.py          query-label lists, STANDARD_LABEL map, model path
+    labels.py          query-label lists, NORMALIZED_LABEL map, model path
 
 Two entry points:
     run_fulltext()   single pass over the whole text (short inputs, rule-based baseline)
@@ -26,7 +26,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from labels import (  # noqa: E402,F401  (re-exported for callers)
-    MODEL_PATH, STANDARD_LABEL, BASELINE_LABELS, FINETUNED_LABELS,
+    MODEL_PATH, NORMALIZED_LABEL, BASELINE_LABELS, FINETUNED_LABELS,
     SYNTHETIC_EXTRA_LABELS, SYNTHETIC_LABELS,
 )
 from preprocessing import normalize_numbers, map_to_original  # noqa: E402
@@ -57,7 +57,7 @@ def run_fulltext(model, full_text, labels, threshold, return_spans=False):
     entities = result["entities"][0] if result.get("entities") else {}
     raw_entities = []  # (text, canon, start, end, conf)
     for raw_label, ents in entities.items():
-        canon = STANDARD_LABEL[raw_label]
+        canon = NORMALIZED_LABEL[raw_label]
         min_conf = _LABEL_THRESHOLD_OVERRIDE.get(canon, threshold)
         for e in ents:
             text = e["text"].strip()

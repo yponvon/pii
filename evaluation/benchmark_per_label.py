@@ -28,7 +28,7 @@ for _p in (EVAL_DIR, PII_ROOT / "inference"):
         sys.path.insert(0, str(_p))
 
 from pipeline import (  # noqa: E402
-    MODEL_PATH, SYNTHETIC_LABELS, STANDARD_LABEL, run_fulltext, run_windowed,
+    MODEL_PATH, SYNTHETIC_LABELS, NORMALIZED_LABEL, run_fulltext, run_windowed,
 )
 from matcher import match_entities_fixed  # noqa: E402
 from metrics import _prf  # noqa: E402
@@ -59,7 +59,7 @@ def build_cases():
     with open(path, encoding="utf-8") as fh:
         for line in fh:
             d = json.loads(line)
-            gold = [(t, STANDARD_LABEL[label])
+            gold = [(t, NORMALIZED_LABEL[label])
                     for label, values in d["output"]["entities"].items()
                     for t in values]
             cases.append((d["input"], gold))

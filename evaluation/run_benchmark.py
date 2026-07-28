@@ -7,7 +7,7 @@ The comparison holds the following constant across all three methods:
   * Gold set : test_data/test_gold_419.jsonl   (the same 419 files for all three)
   * Matcher  : match_entities_fixed              (the same matching logic for all three)
   * NRIC gold: full-format filter disabled       (frozen-path policy; fragments count)
-  * Labels   : standardised to the same nine STANDARD_LABEL labels for all three
+  * Labels   : standardised to the same nine NORMALIZED_LABEL labels for all three
   * Inference: overlapping windows for the two GLiNER methods, which share the
                512-token encoder limit (89% of frozen files exceed it); full
                text for the rule-based method, which has no such limit.
@@ -67,7 +67,7 @@ for _path in (EVAL_DIR, INFERENCE_DIR):
         sys.path.insert(0, str(_path))
 
 from pipeline import (  # noqa: E402
-    STANDARD_LABEL, MODEL_PATH, BASELINE_LABELS, SYNTHETIC_LABELS, run_windowed,
+    NORMALIZED_LABEL, MODEL_PATH, BASELINE_LABELS, SYNTHETIC_LABELS, run_windowed,
 )
 from matcher import match_entities_fixed  # noqa: E402
 from metrics import _prf  # noqa: E402
@@ -96,17 +96,17 @@ RULEBASED_THRESHOLD = 0.5
 WIN_CHARS, OVERLAP = 1800, 400
 
 # The baseline model is zero-shot promptable, so it is queried with the full
-# label set, including the sg_contact_number synonym (which STANDARD_LABEL folds into
+# label set, including the sg_contact_number synonym (which NORMALIZED_LABEL folds into
 # SG_PHONE_NUMBER) and the two labels introduced by the synthetic corpus. This
 # gives the baseline the same opportunity to detect every label the other
 # methods are scored on.
 BASELINE_QUERY = BASELINE_LABELS + ["account_number", "full_name"]
 
-# Mapping from the rule-based system's recognizer names to the shared STANDARD_LABEL
+# Mapping from the rule-based system's recognizer names to the shared NORMALIZED_LABEL
 # labels. ACCOUNT_NUMBER comes from a bare-10-digit PatternRecognizer, and
 # FULL_NAME from spaCy's PERSON entity (both defined in redaction.py), so the
 # rule-based system is scored fairly on all 9 labels.
-RULEBASED_STANDARD_LABEL = {
+RULEBASED_NORMALIZED_LABEL = {
     "EMAIL_ADDRESS": "EMAIL_ADDRESS",
     "SG_NRIC_FIN": "SG_NRIC_FIN",
     "SG_PHONE_NUMBER": "SG_PHONE_NUMBER",
@@ -117,7 +117,7 @@ RULEBASED_STANDARD_LABEL = {
     "ACCOUNT_NUMBER": "ACCOUNT_NUMBER",
     "PERSON": "FULL_NAME",
 }
-RULEBASED_ENTITIES = list(RULEBASED_STANDARD_LABEL.keys())
+RULEBASED_ENTITIES = list(RULEBASED_NORMALIZED_LABEL.keys())
 
 # Report order. The final two labels are produced only by the fine-tuned model.
 REPORT_LABELS = ["EMAIL_ADDRESS", "SG_ADDRESS", "SG_ADDRESS_BLOCK", "SG_ADDRESS_UNIT",
@@ -131,9 +131,9 @@ BASE7 = REPORT_LABELS[:7]  # the seven labels reported by the historical benchma
 # 7-label run rather than a subset of the 9-label run. This matters because the
 # GLiNER models are promptable: the label set they are asked for changes what
 # they predict for the labels that remain.
-BASELINE_QUERY_7 = [l for l in BASELINE_QUERY if STANDARD_LABEL.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
-SYNTHETIC_LABELS_7 = [l for l in SYNTHETIC_LABELS if STANDARD_LABEL.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
-RULEBASED_ENTITIES_7 = [e for e in RULEBASED_ENTITIES if RULEBASED_STANDARD_LABEL[e] not in ("ACCOUNT_NUMBER", "FULL_NAME")]
+BASELINE_QUERY_7 = [l for l in BASELINE_QUERY if NORMALIZED_LABEL.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
+SYNTHETIC_LABELS_7 = [l for l in SYNTHETIC_LABELS if NORMALIZED_LABEL.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
+RULEBASED_ENTITIES_7 = [e for e in RULEBASED_ENTITIES if RULEBASED_NORMALIZED_LABEL[e] not in ("ACCOUNT_NUMBER", "FULL_NAME")]
 
 # Aggregated results for one method: true/false positives and false negatives
 # bucketed per label and corpus-wide, plus the NRIC leak-prevention roll-up
@@ -175,7 +175,7 @@ def load_frozen() -> List[Tuple[str, List[Tuple[str, str]]]]:
     with open(FROZEN, encoding="utf-8") as fh:
         for line in fh:
             record = json.loads(line)
-            gold = [(text, STANDARD_LABEL[label])
+            gold = [(text, NORMALIZED_LABEL[label])
                     for label, values in record["output"]["entities"].items()
                     for text in values]
             cases.append((record["input"], gold))
@@ -206,7 +206,7 @@ _SPEAKER_LABEL_RE = re.compile(r'^(?:speaker[_\s]*\d+|unknown|caller|agent|custo
 def predict_rulebased(redactor, text: str, entities) -> List[Tuple[str, str]]:
     """Rule-based presidio system, run on the full transcript for `entities`.
 
-    Detections are mapped from presidio recognizer names to the shared STANDARD_LABEL
+    Detections are mapped from presidio recognizer names to the shared NORMALIZED_LABEL
     labels.
     """
     results = redactor.analyzer.analyze(
@@ -215,7 +215,7 @@ def predict_rulebased(redactor, text: str, entities) -> List[Tuple[str, str]]:
     )
     predictions = []
     for result in results:
-        canon = RULEBASED_STANDARD_LABEL.get(result.entity_type)
+        canon = RULEBASED_NORMALIZED_LABEL.get(result.entity_type)
         if canon is None:
             continue
         span = text[result.start:result.end].strip()
