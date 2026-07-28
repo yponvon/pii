@@ -47,14 +47,17 @@ models/finetuned_pii_9label/*
 
 # --- Notebooks (saved cell outputs can contain real transcripts) ---
 *.ipynb
+# Exception: reproducible leak-judge notebook — no outputs, synthetic examples only.
+!inference/leak_tests/residual_pii_analysis.ipynb
 
-# --- Excluded external content ---
-# Dead duplicate of the rule-based system.
-external/presidio-gliner/test_25_june/
-# Separate experimental work; not imported, and carries its own data directory.
-external/gliner2-pii/
-# Vendored dependency git metadata.
-external/*/.git/
+# --- external/ is not part of the handover repo ---
+# The rule-based redactor and scoring helpers now live in utils/. Anything left
+# under external/ locally (the company's own presidio-gliner checkout, dead
+# duplicates, experimental gliner2-pii) is never tracked.
+external/
+
+# --- Scrubbed investigation write-up: still being drafted, kept offline ---
+DOCUMENT.md
 
 # =============================================================================
 # Experimental: chunked-training runs (a tested dead end). Kept locally for

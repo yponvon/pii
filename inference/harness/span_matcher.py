@@ -19,7 +19,7 @@ import re
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "scoring_utils"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "utils"))
 from eval_pipeline import same_label_group  # noqa: E402
 
 

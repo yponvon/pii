@@ -21,7 +21,7 @@ import pandas as pd
 from gliner2 import GLiNER2
 
 _PII_ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(_PII_ROOT / "external" / "presidio-gliner" / "scoring_utils"))
+sys.path.insert(0, str(_PII_ROOT / "utils"))
 from eval_pipeline import (  # noqa: E402
     ORIG_DIR, GOLD_DIR, extract_gold_entities, match_entities, _prf,
     _is_valid_nric, _passes_content_filter, _ADDR_CONTEXT_RE, _POSTAL6_RE,

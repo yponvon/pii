@@ -38,10 +38,10 @@ company / title), and anything already inside a `<TAG>` do NOT count.
    (uses `redact_output.redact(model, text, fmt="tagged")`).
 2. **Judge** each transcript with an LLM (blind — no gold shown):
    - Prompt: `leak_judge_prompt.md` (the lenient definition).
-   - Here we used **Claude agents** in 8 batches; in production swap in Azure
-     `o4-mini` (see the original `uat_residual_pii_analysis*.ipynb`).
-   - Split: `python split_for_judges.py N`  → `judge_chunk_*.jsonl`
-   - Each judge writes `judge_result_K.json`:
+   - Judge model: Azure `o4-mini`, driven by `residual_pii_analysis.ipynb`
+     (the reproducible notebook in this folder). Optionally shard the input
+     first with `python split_for_judges.py N`  → `judge_chunk_*.jsonl`.
+   - Each shard writes `judge_result_K.json`:
      `{"assessed": int, "leaked_lines": [..], "details": [{line,type,value}]}`
 3. **Aggregate + HTML**:
    `python make_leak_report.py`  → `results/leak_tests/leaked_transcripts.html`

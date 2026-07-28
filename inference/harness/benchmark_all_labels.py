@@ -25,7 +25,7 @@ from evaluate_finetuned import (  # noqa: E402
 from evaluate_majority import load_majority_test_cases  # noqa: E402
 from span_matcher import match_entities_fixed  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "scoring_utils"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "utils"))
 from eval_pipeline import ORIG_DIR, GOLD_DIR, extract_gold_entities, _prf  # noqa: E402
 
 from gliner2 import GLiNER2

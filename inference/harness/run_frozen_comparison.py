@@ -52,14 +52,14 @@ from typing import Callable, List, Tuple
 #       inference/results/                           report is written here
 #       data/frozen/                                 the frozen gold set
 #       models/                                      fine-tuned adapters
-#       external/presidio-gliner/                    rule-based system and helpers
+#       utils/                                       rule-based redactor + scoring helpers
 HARNESS_DIR = Path(__file__).resolve().parent
 PII_ROOT = HARNESS_DIR.parent.parent
-PRESIDIO_DIR = PII_ROOT / "external" / "presidio-gliner"
+UTILS_DIR = PII_ROOT / "utils"
 
-# The two sibling harness modules and the presidio eval helper are imported by
+# The two sibling harness modules and the scoring helper are imported by
 # name, so their directories must be on sys.path before the imports below.
-for _path in (HARNESS_DIR, PRESIDIO_DIR / "scoring_utils"):
+for _path in (HARNESS_DIR, UTILS_DIR):
     if str(_path) not in sys.path:
         sys.path.insert(0, str(_path))
 
@@ -146,16 +146,14 @@ NRIC_LABEL = "SG_NRIC_FIN"
 
 
 def load_pii_redactor():
-    """Load and return the PIIRedactor class from external/presidio-gliner/redaction.py.
+    """Load and return the PIIRedactor class from utils/redaction.py.
 
-    A second, older copy exists at external/presidio-gliner/test_25_june/
-    redaction.py. A plain ``import redaction`` would bind to whichever directory
-    appears first on sys.path, which is fragile. Loading the module by explicit
-    file location removes that ambiguity: the reference is always the single file
-    named here, independent of import order. redaction.py imports only installed
-    packages, so it loads correctly in isolation.
+    Loaded by explicit file location rather than a bare ``import redaction`` so
+    the reference is always this single file, independent of sys.path import
+    order. redaction.py imports only installed packages (Presidio + GLiNER2), so
+    it loads correctly in isolation.
     """
-    redaction_py = PRESIDIO_DIR / "redaction.py"
+    redaction_py = UTILS_DIR / "redaction.py"
     spec = importlib.util.spec_from_file_location("presidio_redaction", redaction_py)
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module

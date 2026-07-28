@@ -15,7 +15,7 @@ from pathlib import Path
 
 from gliner2 import GLiNER2
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "external" / "presidio-gliner" / "scoring_utils"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "utils"))
 from eval_pipeline import match_entities, _prf  # noqa: E402
 
 from evaluate_finetuned import (  # noqa: E402

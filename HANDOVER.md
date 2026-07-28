@@ -35,12 +35,12 @@ requirements.txt       Pinned dependencies (Python 3.11)
 
 finetuning/            Everything about training
   data_prep/           Builders that turn raw transcripts into training splits
-  scripts/             train.py (the keeper trainer), plus experiment scripts
+  scripts/             train.py (the keeper trainer)
 inference/             Running and evaluating the model
   harness/             redact_output.py (use the model), the benchmark, matcher, filters
   leak_tests/          Business-facing residual-leak and account-redaction tests
   results/             frozen_comparison.txt (the authoritative benchmark)
-external/presidio-gliner/   Rule-based baseline (redaction.py) + guardrail package
+utils/                 Rule-based baseline (redaction.py) + scoring helpers (eval_pipeline.py)
 models/finetuned_pii_9label/best/   The trained LoRA adapter (~13 MB)
 ```
 
@@ -229,5 +229,5 @@ the working tree, which contains the offline data.
   its default output formatter drops repeated values — use `format_results=False`.
 - **Training hardware:** on Apple MPS a full run is ~6–7h. A CUDA GPU cuts this to
   well under an hour.
-- **Rule-based baseline** (`external/presidio-gliner/redaction.py`) is the
-  company's gold-standard reference; treat it as read-only.
+- **Rule-based baseline** (`utils/redaction.py`) is the company's Presidio-based
+  reference redactor, kept here as the third benchmark arm; treat it as read-only.

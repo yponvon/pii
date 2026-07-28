@@ -14,4 +14,4 @@ Do NOT count as residual PII (safe or weak):
 Read the assigned chunk file (one JSON object per line: fields `line`, `redacted`). Assess every transcript. Write the verdict JSON to the assigned output path:
 {"assessed": <int>, "leaked_lines": [<line numbers with residual PII>], "details": [{"line": <int>, "type": "Full Mobile"|"Full NRIC"|"Full Address", "value": "<exact plain-text value>"}]}
 
-Production note: this ran as Claude agents in 8 batches; swap in Azure `o4-mini` per the original `uat_residual_pii_analysis*.ipynb` when running on the company GitHub.
+Judge model: Azure `o4-mini`, driven by `residual_pii_analysis.ipynb` in this folder. Optionally shard the input with `split_for_judges.py N` to run several passes in parallel.
