@@ -49,7 +49,8 @@ company / title), and anything already inside a `<TAG>` do NOT count.
    customer-based leak rates.
 
 **Customer dedup:** frozen lines carry no filename, so we match `input` text back
-to `pii/data/authentic_test/*.json`; customer_id = `filename.split("_")[-2]`.
+to the per-file transcripts in `pii/data/test/*.json` (the committed `example.json`
+is skipped); customer_id = `filename.split("_")[-2]`.
 
 **Last result (keeper model):** 28/419 files (6.7%), 26/258 customers (10.1%).
 26 = mobile read-backs (model tags first mention, misses the agent repeating it),

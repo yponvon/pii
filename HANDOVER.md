@@ -97,9 +97,9 @@ only the 7 base labels; those numbers are the "base 7" column.
 
 ### 5a. Data
 - **Synthetic corpus** (~1,050 generated SG call transcripts) + **186 authentic**
-  transcripts (`data/authentic_val/`), plus **419 authentic** held out as the
-  frozen test set (`data/authentic_test/`). All of this is **real-PII-adjacent
-  and kept offline** — it is not in the repository.
+  transcripts (split across `data/train/authentic/` and `data/val/authentic/`),
+  plus **419 authentic** held out as the frozen test set (`data/test/`). All of
+  this is **real-PII-adjacent and kept offline** — it is not in the repository.
 - The keeper trains on the **mixed** split: **1,000 synthetic + 150 authentic**
   (train), 30 synthetic + 36 authentic (val). All 186 authentic transcripts are
   used (150 train + 36 val); the 419 test set is fully disjoint.

@@ -21,7 +21,8 @@ COMPLETE_DIGITS = 8
 detail = json.load(open(LT / "acct_detail.json"))
 frozen = [json.loads(l) for l in open(ROOT / "data" / "test" / "test_gold_419.jsonl")]
 cust = {json.load(open(f))["input"]: os.path.basename(f)[:-5]
-        for f in glob.glob(str(ROOT / "data" / "authentic_test" / "*.json"))}
+        for f in glob.glob(str(ROOT / "data" / "test" / "*.json"))
+        if os.path.basename(f) != "example.json"}
 
 survives = lambda x: x["red"] < x["total"]
 bad = []

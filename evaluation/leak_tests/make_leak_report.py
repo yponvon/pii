@@ -17,9 +17,11 @@ for f in glob.glob(str(LT / "judge_result_*.json")):
         leaks.setdefault(it["line"], []).append(it)
 red = {json.loads(l)["line"]: json.loads(l)["redacted"] for l in open(LT / "redacted_all.jsonl")}
 
-# customer_id via authentic_test filename (frozen carries no filename)
+# customer_id via the per-file test transcript filename (the frozen gold carries
+# no filename); the committed example.json is a fake shape demo, so skip it.
 cust = {json.load(open(f))["input"]: os.path.basename(f)[:-5]
-        for f in glob.glob(str(ROOT / "data" / "authentic_test" / "*.json"))}
+        for f in glob.glob(str(ROOT / "data" / "test" / "*.json"))
+        if os.path.basename(f) != "example.json"}
 frozen = [json.loads(l) for l in open(ROOT / "data" / "test" / "test_gold_419.jsonl")]
 fname = {i: cust.get(d["input"], "(unmatched)") for i, d in enumerate(frozen)}
 cid = lambda i: fname[i].split("_")[-2] if fname[i] != "(unmatched)" else None
