@@ -39,7 +39,7 @@ finetuning/            Make the model (training)
 inference/             Redact (the pipeline)
   pipeline.py          Orchestration; + preprocessing.py, postprocessing.py, labels.py, redact.py
 evaluation/            Measure the model
-  run_benchmark.py     The 3-way benchmark; + benchmark_per_label.py, matcher.py, metrics.py
+  run_benchmark.py     The 3-way benchmark (per-label + overall; --gate); + matcher.py, metrics.py
   results/             frozen_comparison.txt (the authoritative benchmark)
   leak_tests/          Business-facing residual-leak and account-redaction tests
 models/finetuned_pii_9label/best/   The trained LoRA adapter (~13 MB)

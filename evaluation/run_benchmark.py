@@ -28,10 +28,12 @@ Requirements:
   The first run downloads the GLiNER base model from Hugging Face and caches it.
 
 Usage:
-  python run_benchmark.py [ADAPTER_DIR] [-o OUTPUT]
+  python run_benchmark.py [ADAPTER_DIR] [-o OUTPUT] [--gate]
   python run_benchmark.py --help
   ADAPTER_DIR defaults to the fine-tuned keeper's best checkpoint; if it does not exist,
   the fine-tuned method is skipped and only baseline and rule-based are scored.
+  --gate appends a per-label PASS/FAIL acceptance check for the fine-tuned model
+  (PASS = P>0.8 & R>0.8 & F1>0.8 on every label).
 """
 
 import argparse
@@ -411,6 +413,33 @@ def format_report(methods: dict, num_files: int) -> List[str]:
     return lines
 
 
+GATE_THRESHOLD = 0.8
+
+
+def format_gate(s: Scores, labels=REPORT_LABELS, thr=GATE_THRESHOLD) -> List[str]:
+    """Per-label PASS/FAIL gate for one method's 9-label scores.
+
+    A label passes when precision, recall and F1 all exceed `thr`; the run passes
+    when every label passes. This is the acceptance check the standalone
+    benchmark_per_label.py used to provide, folded into the authoritative
+    benchmark so there is a single scoring path.
+    """
+    lines = ["", "=" * 78,
+             f"PER-LABEL PASS/FAIL GATE  (fine-tuned, 9-label prompt; "
+             f"PASS = P>{thr:g} & R>{thr:g} & F1>{thr:g})",
+             "-" * 78]
+    all_pass = True
+    for label in labels:
+        precision, recall, f1 = _prf(s.tp_by_label[label], s.fp_by_label[label], s.fn_by_label[label])
+        ok = precision > thr and recall > thr and f1 > thr
+        all_pass = all_pass and ok
+        lines.append(f"{label:<20} P={precision:.4f}  R={recall:.4f}  F1={f1:.4f}  "
+                     f"[{'PASS' if ok else 'FAIL'}]")
+    lines.append("")
+    lines.append(f"ALL {len(labels)} LABELS PASS: {all_pass}")
+    return lines
+
+
 def parse_args() -> argparse.Namespace:
     """Define and parse the command-line interface."""
     parser = argparse.ArgumentParser(
@@ -425,6 +454,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "-o", "--output", default=str(RESULTS),
         help="Path to write the text report. Default: %(default)s",
+    )
+    parser.add_argument(
+        "--gate", action="store_true",
+        help="Append a per-label PASS/FAIL gate for the fine-tuned model "
+             "(PASS = P>0.8 & R>0.8 & F1>0.8 on every label, 9-label prompt).",
     )
     return parser.parse_args()
 
@@ -446,7 +480,14 @@ def main():
     methods = evaluate_methods(cases, adapter, log=lambda msg: print(msg, flush=True))
 
     # 3. Build the report, then both print it and save it to disk.
-    report = "\n".join(format_report(methods, len(cases)))
+    report_lines = format_report(methods, len(cases))
+    if args.gate:
+        if "finetuned" in methods:
+            report_lines += format_gate(methods["finetuned"]["nine"])
+        else:
+            report_lines += ["", "PER-LABEL PASS/FAIL GATE: fine-tuned method "
+                             "unavailable (adapter missing) -- gate skipped."]
+    report = "\n".join(report_lines)
     print("\n" + report)
     results_path.parent.mkdir(parents=True, exist_ok=True)
     results_path.write_text(report + "\n")

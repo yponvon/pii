@@ -108,10 +108,10 @@ See `PIPELINE_OVERVIEW.md` for the full description.
 ```
 1. finetuning/data_prep/build_splits.py  → data/train.jsonl / data/val.jsonl   (offline; real PII)
 2. finetuning/scripts/train.py [run_name]             → models/runs/<run_name>/best/   (candidate LoRA adapter + loss.png)
-3. evaluation/run_benchmark.py         → evaluation/results/frozen_comparison.txt
-        the 3-way benchmark: baseline vs rule-based vs fine-tuned, 419 frozen set, 9- and 7-label prompts
-4. evaluation/benchmark_per_label.py          → per-label P/R/F1 on the same 419 set
-5. evaluation/leak_tests/                               → residual-leak + account-redaction business tests
+3. evaluation/run_benchmark.py [--gate]  → evaluation/results/frozen_comparison.txt
+        the 3-way benchmark: baseline vs rule-based vs fine-tuned, 419 frozen set, 9- and 7-label
+        prompts (per-label + overall); --gate adds a per-label PASS/FAIL check for the keeper
+4. evaluation/leak_tests/                               → residual-leak + account-redaction business tests
 ```
 
 Steps 1–2 are optional (the trained adapter ships). Step 3 writes the benchmark
@@ -130,8 +130,7 @@ inference/           Redact (the pipeline)
   labels.py          Label lists + the NORMALIZED_LABEL name map
   redact.py          Production entry point
 evaluation/          Measure the model
-  run_benchmark.py   The 3-way benchmark
-  benchmark_per_label.py
+  run_benchmark.py   The 3-way benchmark (per-label + overall; --gate for PASS/FAIL)
   matcher.py         Pred-vs-gold matcher
   metrics.py         P/R/F1 + label-group helpers
   results/           frozen_comparison.txt (tracked); reports/ + leak_tests/ (gitignored, real PII)

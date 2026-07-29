@@ -66,8 +66,7 @@ The consuming code points at these paths:
   writes `data/train.jsonl` / `data/val.jsonl`. The test set is frozen and never
   rebuilt.
 - `finetuning/scripts/train.py` reads `data/train.jsonl` and `data/val.jsonl`.
-- `evaluation/run_benchmark.py` and `evaluation/benchmark_per_label.py` read
-  `data/test/test_gold_419.jsonl`.
+- `evaluation/run_benchmark.py` reads `data/test/test_gold_419.jsonl`.
 
 ---
 
