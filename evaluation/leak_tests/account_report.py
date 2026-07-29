@@ -1,24 +1,38 @@
 """Apply the 'business user can identify' rule to the account survival data.
 
-Second step of the account-redaction test. Reads acct_detail.json and, for each
-account-bearing transcript, decides whether a complete account remains
-recoverable, then builds a review HTML of the transcripts where it does not.
+Second step of the account-redaction test. Reads the acct_detail<suffix>.json
+saved by account_test.py for the same --method and, for each account-bearing
+transcript, decides whether a complete account remains recoverable, then builds
+a review HTML of the transcripts where it does not.
 
 An account is recoverable when a complete account value (at least
 COMPLETE_DIGITS digits) survives unredacted, or when every account piece
 survives and can be reassembled. A transcript is flagged when no complete
 account can be obtained. Because the rule runs on the saved detail,
 COMPLETE_DIGITS can be changed without re-running inference.
-Output: results/account_unrecoverable.html.
+
+    python account_report.py [--method finetuned|baseline|rulebased]
+
+Output: results/reports/account_unrecoverable<suffix>.html.
 """
-import json, glob, os, html
+import argparse, json, glob, os, html
+import sys
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from methods import suffix, METHODS   # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
 LT = ROOT / "evaluation" / "results" / "leak_tests"
 COMPLETE_DIGITS = 8
 
-detail = json.load(open(LT / "acct_detail.json"))
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--method", choices=METHODS, default="finetuned",
+                    help="Which method's saved detail to score (default: finetuned).")
+args = parser.parse_args()
+sfx = suffix(args.method)
+
+detail = json.load(open(LT / f"acct_detail{sfx}.json"))
 frozen = [json.loads(l) for l in open(ROOT / "data" / "test" / "test_gold_419.jsonl")]
 cust = {json.load(open(f))["input"]: os.path.basename(f)[:-5]
         for f in glob.glob(str(ROOT / "data" / "test" / "*.json"))
@@ -73,10 +87,13 @@ doc = ('<!doctype html><meta charset=utf-8><title>Account unrecoverable</title><
        '.info{background:#fff8e6;border:1px solid #ecd9a0;border-radius:6px;padding:.4rem;font-size:.85rem;margin:.5rem 0}'
        '.body{font-size:.82rem;line-height:1.5}.lost{background:#ffd5cc;color:#9b1c00;font-weight:700}'
        '.kept{background:#d7f0d7;color:#1c6b1c;font-weight:700}</style>'
-       f'<h2>Account unrecoverable review &mdash; {len(bad)} transcripts</h2>'
+       f'<h2>Account unrecoverable ({args.method}) &mdash; {len(bad)} of {len(detail)} '
+       f'account-bearing calls lost the account number ({100*len(bad)/max(1,len(detail)):.1f}%)</h2>'
        '<p style="color:#666">Red = piece fully redacted (lost); green = survived. '
        'Judge whether a COMPLETE account is still recoverable.</p>' + "".join(cards))
-html_out = LT.parent / "account_unrecoverable.html"      # results/ (not results/leak_tests/)
+html_out = LT.parent / "reports" / f"account_unrecoverable{sfx}.html"   # results/reports/
+html_out.parent.mkdir(parents=True, exist_ok=True)
 html_out.write_text(doc)
-print(f"account-bearing: {len(detail)}  BAD (no complete account): {len(bad)} ({100*len(bad)/len(detail):.1f}%)")
+print(f"[{args.method}] account-bearing: {len(detail)}  "
+      f"BAD (no complete account): {len(bad)} ({100*len(bad)/max(1,len(detail)):.1f}%)")
 print(f"HTML -> {html_out}")

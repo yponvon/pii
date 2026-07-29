@@ -31,6 +31,37 @@ python evaluation/run_benchmark.py
 This scores the baseline, rule-based, and fine-tuned methods against the frozen
 gold set and writes a report to `evaluation/results/`.
 
+## Safety tests (leak & account recoverability)
+
+Two business-facing checks complement the per-span metrics. Each one **runs the
+inference pipeline** over the frozen 419 set, then writes a highlighted HTML
+report to `evaluation/results/reports/` (contains real PII — gitignored).
+
+**Account-recoverability** — how often does redaction hide an account number so
+completely the Business Unit can no longer identify the customer? Two steps:
+
+```
+python evaluation/leak_tests/account_test.py     # inference pass (~15-25 min) → acct_detail.json
+python evaluation/leak_tests/account_report.py    # offline → reports/account_unrecoverable.html
+```
+
+The report heading shows how many calls missed, e.g. *"21 of 176 account-bearing
+calls lost the account number"*, and lists each one. Because `account_test.py`
+saves per-value survival, you can change the recoverability rule and re-run only
+`account_report.py` for a new report instantly — no second inference pass.
+
+**Residual-PII leak** — after redaction, does a *complete* identifier still sit in
+the transcript as plain text? Three steps (the judge needs Azure o4-mini creds):
+
+```
+python evaluation/leak_tests/redact_transcripts.py   # inference pass (~30-50 min)
+# judge: evaluation/leak_tests/residual_pii_analysis.ipynb  (Azure o4-mini)
+python evaluation/leak_tests/make_leak_report.py      # → reports/leaked_transcripts.html
+```
+
+The report heading shows the miss count (e.g. *"28 leaked / 419"*). Full
+definitions are in `evaluation/leak_tests/README.md`.
+
 ## Redact a transcript
 
 ```python
@@ -103,7 +134,7 @@ evaluation/          Measure the model
   benchmark_per_label.py
   matcher.py         Pred-vs-gold matcher
   metrics.py         P/R/F1 + label-group helpers
-  results/           frozen_comparison.txt
+  results/           frozen_comparison.txt (tracked); reports/ + leak_tests/ (gitignored, real PII)
   leak_tests/        Residual-leak + account-redaction tests
 models/
   finetuned_pii_9label/best/   The fine-tuned LoRA adapter (the keeper)

@@ -1,26 +1,39 @@
-"""Redact every frozen transcript with the keeper model for the leak test.
+"""Redact every frozen transcript for the leak test, with any method.
 
-First step of the residual-PII leak test. Loads the finetuned model, redacts
-each transcript into tagged form, and writes the blind versions that the leak
-judges later review. Output: results/leak_tests/redacted_all.jsonl.
+First step of the residual-PII leak test. Redacts each transcript into tagged
+form with the chosen method (finetuned / baseline / rulebased) and writes the
+blind versions the leak judges later review.
+
+    python redact_transcripts.py [--method finetuned|baseline|rulebased]
+
+Output: results/leak_tests/redacted_all<suffix>.jsonl
+        (suffix is '' for finetuned, '_baseline' / '_rulebased' otherwise).
 """
-import json, sys
+import argparse
+import json
+import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from methods import load, leak_tagged, suffix, METHODS   # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
-sys.path.insert(0, str(ROOT / "inference"))
-from redact import load_finetuned, redact                # noqa: E402
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--method", choices=METHODS, default="finetuned",
+                    help="Detection method to redact with (default: finetuned).")
+args = parser.parse_args()
 
 FROZEN = ROOT / "data" / "test" / "test_gold_419.jsonl"
-OUT = ROOT / "evaluation" / "results" / "leak_tests" / "redacted_all.jsonl"
+OUT = ROOT / "evaluation" / "results" / "leak_tests" / f"redacted_all{suffix(args.method)}.jsonl"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
 rows = [json.loads(l) for l in open(FROZEN)]
-model = load_finetuned()
+handle = load(args.method)
 with open(OUT, "w", encoding="utf-8") as f:
     for i, d in enumerate(rows):
-        f.write(json.dumps({"line": i, "redacted": redact(model, d["input"], fmt="tagged")},
+        f.write(json.dumps({"line": i, "redacted": leak_tagged(handle, d["input"])},
                            ensure_ascii=False) + "\n")
         if (i + 1) % 50 == 0:
-            print(f"redacted {i+1}/{len(rows)}", flush=True)
-print(f"DONE -> {OUT}")
+            print(f"[{args.method}] redacted {i+1}/{len(rows)}", flush=True)
+print(f"[{args.method}] DONE -> {OUT}")

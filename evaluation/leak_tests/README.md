@@ -9,15 +9,29 @@ in `run_benchmark.py`:
    how often does the model still redact an account number so completely that the
    Business Unit can no longer identify the customer?
 
-Both run against the frozen set (`pii/data/test/test_gold_419.jsonl`) and the
-fine-tuned keeper model (`pii/models/finetuned_pii_9label/best`). Scripts
-use repo-relative paths. **HTML reports** are written to `pii/evaluation/results/`
-(`leaked_transcripts.html`, `account_unrecoverable.html`); **intermediate data**
-(redacted transcripts, judge results, account detail) goes to
+Both run against the frozen set (`pii/data/test/test_gold_419.jsonl`). Scripts
+use repo-relative paths. **HTML reports** are written to `pii/evaluation/results/reports/`;
+**intermediate data** (redacted transcripts, judge results, account detail) goes to
 `pii/evaluation/results/leak_tests/`.
 
 Run everything with the project venv:
 `venv/bin/python3`
+
+### Choosing the method (`--method`)
+
+Every step takes `--method {finetuned,baseline,rulebased}` so all three
+benchmarked detectors can be tested, not just the keeper:
+
+- `finetuned` (default) — the shipped LoRA keeper (`models/finetuned_pii_9label/best`).
+- `baseline` — the zero-shot GLiNER base model (no adapter).
+- `rulebased` — the Presidio + spaCy system (`models/rule-based-gliner/redaction.py`).
+
+Output files are **suffixed by method** so runs never overwrite each other:
+`""` for finetuned (e.g. `redacted_all.jsonl`), `_baseline` / `_rulebased`
+otherwise (e.g. `acct_detail_rulebased.json`,
+`reports/account_unrecoverable_rulebased.html`). All the per-method plumbing
+lives in `methods.py`. Pass the **same** `--method` to every step of a test
+(and set `METHOD` to match in the judge notebook).
 
 ---
 
@@ -33,18 +47,20 @@ Partials, fragments, isolated components, weak identifiers (name / account /
 company / title), and anything already inside a `<TAG>` do NOT count.
 
 ### Steps
-1. **Redact** all 419 → tagged transcripts:
-   `python redact_transcripts.py`  → writes `results/leak_tests/redacted_all.jsonl`
-   (uses `redact_output.redact(model, text, fmt="tagged")`).
+(shown for the default `finetuned`; add `--method baseline` / `--method rulebased`
+to each command to test the other detectors)
+1. **Redact** all 419 → tagged transcripts (this is the inference pass):
+   `python redact_transcripts.py [--method ...]`  → `results/leak_tests/redacted_all<suffix>.jsonl`
+   (uses `methods.leak_tagged`, i.e. the full 9-label pipeline / Presidio tags).
 2. **Judge** each transcript with an LLM (blind — no gold shown):
    - Prompt: `leak_judge_prompt.md` (the lenient definition).
    - Judge model: Azure `o4-mini`, driven by `residual_pii_analysis.ipynb`
-     (the reproducible notebook in this folder). Optionally shard the input
-     first with `python split_for_judges.py N`  → `judge_chunk_*.jsonl`.
-   - Each shard writes `judge_result_K.json`:
+     (the reproducible notebook in this folder). **Set `METHOD` in the notebook's
+     config cell to match** the `--method` you redacted with.
+   - Each shard writes `judge_result<suffix>_K.json`:
      `{"assessed": int, "leaked_lines": [..], "details": [{line,type,value}]}`
 3. **Aggregate + HTML**:
-   `python make_leak_report.py`  → `results/leaked_transcripts.html`
+   `python make_leak_report.py [--method ...]`  → `results/reports/leaked_transcripts<suffix>.html`
    (leaked plain PII in red, correct tags in blue) + prints file- and
    customer-based leak rates.
 
@@ -71,22 +87,34 @@ every piece survives (reassemblable). A surviving *fragment* alone is NOT enough
 BAD = no complete account obtainable.
 
 ### Steps
+(add `--method baseline` / `--method rulebased` to both commands to test the
+other detectors; the same `--method` must be passed to both)
 1. **Measure** (7-label inference, saves per-value survival — run once):
-   `python account_test.py`  → `results/leak_tests/acct_detail.json`
+   `python account_test.py [--method ...]`  → `results/leak_tests/acct_detail<suffix>.json`
    (per account value: digits, total occurrences, redacted occurrences).
 2. **Apply rule + HTML** (offline, instant — tweak the rule freely, no re-run):
-   `python account_report.py`  → prints bad-transcript count +
-   `results/account_unrecoverable.html`
+   `python account_report.py [--method ...]`  → prints bad-transcript count +
+   `results/reports/account_unrecoverable<suffix>.html`
    (account pieces color-coded: red = fully redacted/lost, green = survived).
 
-**Last result (keeper model):** 21/176 account-bearing calls (11.9%) lose the
-account number. Almost all: account digit-runs mis-tagged as `SG_PHONE_NUMBER`.
-A phone-vs-account context/shape gate (like the postal gate) would reduce it.
+**Results (account-bearing calls that lose the account number, lower is better):**
+
+| Method | Unrecoverable | Rate | Dominant cause |
+|--------|---------------|------|----------------|
+| finetuned (keeper) | 21 / 176 | 11.9% | digit-runs mis-tagged as `SG_PHONE_NUMBER` |
+| rule-based (Presidio) | 33 / 176 | 18.8% | 6-digit runs caught by the `SG_POSTAL_CODE` regex |
+
+Same 176 calls and `COMPLETE_DIGITS=8` rule for both; each method uses its own
+benchmark threshold (keeper 0.35, rule-based 0.5). A phone/postal-vs-account
+shape gate (like the existing postal gate) would reduce both.
 
 ---
 
 ## Notes
-- Both tests need a fresh model inference pass (~30–50 min for redaction, ~15–25
-  min for the 7-label account pass) on MPS; keep runs serial (single GPU).
+- The GLiNER methods (`finetuned`, `baseline`) need a fresh inference pass on MPS
+  (~30–50 min for redaction, ~15–25 min for the 7-label account pass); keep runs
+  serial (single GPU). The `rulebased` method is CPU-only and far faster.
 - The account test saves survival data so definition tweaks recompute instantly.
+- All per-method logic lives in `methods.py`; the report/notebook steps are
+  method-agnostic and only change which suffixed files they read/write.
 - HTML reports contain REAL PII — they are written locally, never published.

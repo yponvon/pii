@@ -1,23 +1,35 @@
-"""Record per-account-value survival data under the 7-label redaction model.
+"""Record per-account-value survival data under 7-label redaction.
 
-First step of the account-redaction test. Runs the finetuned model with its
-seven base labels (account_number is not queried) and, for each account value,
-records how many occurrences were redacted and by which labels. The saved
-detail lets any 'business user can identify' rule be evaluated offline.
-Output: results/leak_tests/acct_detail.json.
+First step of the account-redaction test. Runs the chosen method with its seven
+base labels (account_number is NOT queried) and, for each account value, records
+how many occurrences were redacted and by which labels. The saved detail lets any
+'business user can identify' rule be evaluated offline (see account_report.py).
+
+    python account_test.py [--method finetuned|baseline|rulebased]
+
+Output: results/leak_tests/acct_detail<suffix>.json
+        (suffix is '' for finetuned, '_baseline' / '_rulebased' otherwise).
 """
-import json, re, sys
+import argparse
+import json
+import re
+import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from methods import load, account_spans, suffix, METHODS   # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
-sys.path.insert(0, str(ROOT / "inference"))
-from pipeline import LABELS_7, run_windowed   # 7 base labels, no account_number
-from redact import load_finetuned                        # noqa: E402
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--method", choices=METHODS, default="finetuned",
+                    help="Detection method to test (default: finetuned).")
+args = parser.parse_args()
 
 frozen = [json.loads(l) for l in open(ROOT / "data" / "test" / "test_gold_419.jsonl")]
-OUT = ROOT / "evaluation" / "results" / "leak_tests" / "acct_detail.json"
+OUT = ROOT / "evaluation" / "results" / "leak_tests" / f"acct_detail{suffix(args.method)}.json"
 OUT.parent.mkdir(parents=True, exist_ok=True)
-model = load_finetuned()
+handle = load(args.method)
 digits = lambda s: re.sub(r"\D", "", s)
 
 out = []
@@ -26,10 +38,10 @@ for i, d in enumerate(frozen):
     if not accts:
         continue
     text = d["input"]
-    spans = run_windowed(model, text, LABELS_7, 0.35, return_spans=True)  # (text,label,s,e,conf)
+    spans = account_spans(handle, text)              # (text, label, start, end)
 
     def hit_labels(a, b):
-        return {lab for _t, lab, s, e, _c in spans if not (b <= s or a >= e)}
+        return {lab for _t, lab, s, e in spans if not (b <= s or a >= e)}
 
     vals = []
     for v in set(accts):
@@ -47,4 +59,4 @@ for i, d in enumerate(frozen):
                      "red": red_count, "labels": labels})
     out.append({"line": i, "vals": vals})
 json.dump(out, open(OUT, "w"))
-print(f"saved detail for {len(out)} account-bearing transcripts -> {OUT}")
+print(f"[{args.method}] saved detail for {len(out)} account-bearing transcripts -> {OUT}")
