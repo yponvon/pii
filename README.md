@@ -9,12 +9,6 @@ The nine labels are `sg_phone_number`, `sg_nric_fin`, `sg_address`,
 `sg_postal_code`, `sg_address_unit_number`, `sg_address_block_number`,
 `email_address`, `account_number`, and `full_name`.
 
-Recall matters more than precision here: a missed identifier is a leak, while an
-over-redaction is a minor inconvenience — so the benchmark headline is the
-recall-weighted F2 score. The current numbers live in
-`evaluation/results/frozen_comparison.txt` (regenerate with the benchmark below);
-`HANDOVER.md` and `PIPELINE_OVERVIEW.md` carry the summary tables.
-
 ## Setup
 
 Developed on Python 3.11.
