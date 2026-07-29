@@ -7,200 +7,77 @@ tags:
 - transformers
 ---
 
-# Model Card for Model ID
+# PII redaction adapter — Singapore call-centre transcripts (9 labels)
 
-<!-- Provide a quick summary of what the model is/does. -->
+A LoRA adapter that fine-tunes `fastino/gliner2-privacy-filter-PII-multi`
+(GLiNER2, mDeBERTa-v3-base encoder) to detect personal identifiers in Singapore
+utility call-centre transcripts. This is the shipped "keeper" adapter; the
+inference pipeline (`inference/redact.py`) loads it by default.
 
+## What it does
 
+Detects nine PII types as `(text, label)` spans:
 
-## Model Details
+`sg_phone_number`, `sg_nric_fin`, `sg_address`, `sg_postal_code`,
+`sg_address_unit_number`, `sg_address_block_number`, `email_address`,
+`account_number`, `full_name`.
 
-### Model Description
+Seven are inherited from the base model; `account_number` and `full_name` were
+added by this project. Addresses are tagged compositionally (street, block, unit,
+postal code as separate labels).
 
-<!-- Provide a longer summary of what this model is. -->
+## Intended use
 
+Redacting PII from transcribed SP Group call-centre conversations (speech-to-text
+output, so numbers arrive spoken, fragmented, and read back for confirmation). Not
+a general-purpose PII model — it is tuned for this domain and Singapore formats.
 
+```python
+from inference.redact import load_finetuned, redact
+model = load_finetuned()
+print(redact(model, transcript, fmt="tagged"))
+```
 
-- **Developed by:** [More Information Needed]
-- **Funded by [optional]:** [More Information Needed]
-- **Shared by [optional]:** [More Information Needed]
-- **Model type:** [More Information Needed]
-- **Language(s) (NLP):** [More Information Needed]
-- **License:** [More Information Needed]
-- **Finetuned from model [optional]:** [More Information Needed]
+The adapter is applied through the full pipeline (spoken-number normalization,
+overlapping-window inference, precision filters, recall boosters, value
+propagation) — see `PIPELINE_OVERVIEW.md`. Used raw, without that pipeline, recall
+is materially lower.
 
-### Model Sources [optional]
+## Training
 
-<!-- Provide the basic links for the model. -->
-
-- **Repository:** [More Information Needed]
-- **Paper [optional]:** [More Information Needed]
-- **Demo [optional]:** [More Information Needed]
-
-## Uses
-
-<!-- Address questions around how the model is intended to be used, including the foreseeable users of the model and those affected by the model. -->
-
-### Direct Use
-
-<!-- This section is for the model use without fine-tuning or plugging into a larger ecosystem/app. -->
-
-[More Information Needed]
-
-### Downstream Use [optional]
-
-<!-- This section is for the model use when fine-tuned for a task, or when plugged into a larger ecosystem/app -->
-
-[More Information Needed]
-
-### Out-of-Scope Use
-
-<!-- This section addresses misuse, malicious use, and uses that the model will not work well for. -->
-
-[More Information Needed]
-
-## Bias, Risks, and Limitations
-
-<!-- This section is meant to convey both technical and sociotechnical limitations. -->
-
-[More Information Needed]
-
-### Recommendations
-
-<!-- This section is meant to convey recommendations with respect to the bias, risk, and technical limitations. -->
-
-Users (both direct and downstream) should be made aware of the risks, biases and limitations of the model. More information needed for further recommendations.
-
-## How to Get Started with the Model
-
-Use the code below to get started with the model.
-
-[More Information Needed]
-
-## Training Details
-
-### Training Data
-
-<!-- This should link to a Dataset Card, perhaps with a short stub of information on what the training data is all about as well as documentation related to data pre-processing or additional filtering. -->
-
-[More Information Needed]
-
-### Training Procedure
-
-<!-- This relates heavily to the Technical Specifications. Content here should link to that section when it is relevant to the training procedure. -->
-
-#### Preprocessing [optional]
-
-[More Information Needed]
-
-
-#### Training Hyperparameters
-
-- **Training regime:** [More Information Needed] <!--fp32, fp16 mixed precision, bf16 mixed precision, bf16 non-mixed precision, fp16 non-mixed precision, fp8 mixed precision -->
-
-#### Speeds, Sizes, Times [optional]
-
-<!-- This section provides information about throughput, start/end time, checkpoint size if relevant, etc. -->
-
-[More Information Needed]
+- **Data:** mixed synthetic + authentic SP Group transcripts — 1,150 train
+  (1,000 synthetic + 150 authentic) and 66 val (30 synthetic + 36 authentic).
+  Gold follows the "gold invariant": each value is listed once per occurrence, so
+  read-backs are labelled. See `DATA.md`.
+- **Method:** LoRA (r=16, α=32, dropout=0) on the encoder + task head; encoder LR
+  1e-5, task-head LR 5e-4; max sequence length 512; seed 42; up to 15 epochs with
+  early stopping (patience 3 on `eval_loss`). See `finetuning/scripts/train.py`.
 
 ## Evaluation
 
-<!-- This section describes the evaluation protocols and provides the results. -->
+Scored on a frozen, held-out set of 419 authentic transcripts against a zero-shot
+GLiNER baseline and a rule-based Presidio baseline. The headline metric is **F2**
+(recall weighted 2× precision, because a missed identifier is a leak while an
+over-redaction is a minor inconvenience). The fine-tuned model leads on recall and
+F2, and keeps full-NRIC protection at 100% on the frozen set. Full, current numbers
+live in `evaluation/results/frozen_comparison.txt` (regenerate with
+`evaluation/run_benchmark.py`).
 
-### Testing Data, Factors & Metrics
+## Limitations
 
-#### Testing Data
+- **Domain-specific:** Singapore formats and SP Group call flows; not validated
+  elsewhere.
+- **512-token encoder ceiling:** mitigated at inference by overlapping windows;
+  the raw adapter still only sees 512 tokens per pass.
+- **Synthetic→authentic gap:** training is ~87% synthetic, so recall on real calls
+  is the main headroom; more authentic data is the next lever.
+- **PII data is never shipped:** all training/eval transcripts are kept offline.
 
-<!-- This should link to a Dataset Card if possible. -->
+## License
 
-[More Information Needed]
+Internal SP Group project. Inherits the base model's license
+(`fastino/gliner2-privacy-filter-PII-multi`); confirm terms before external use.
 
-#### Factors
-
-<!-- These are the things the evaluation is disaggregating by, e.g., subpopulations or domains. -->
-
-[More Information Needed]
-
-#### Metrics
-
-<!-- These are the evaluation metrics being used, ideally with a description of why. -->
-
-[More Information Needed]
-
-### Results
-
-[More Information Needed]
-
-#### Summary
-
-
-
-## Model Examination [optional]
-
-<!-- Relevant interpretability work for the model goes here -->
-
-[More Information Needed]
-
-## Environmental Impact
-
-<!-- Total emissions (in grams of CO2eq) and additional considerations, such as electricity usage, go here. Edit the suggested text below accordingly -->
-
-Carbon emissions can be estimated using the [Machine Learning Impact calculator](https://mlco2.github.io/impact#compute) presented in [Lacoste et al. (2019)](https://arxiv.org/abs/1910.09700).
-
-- **Hardware Type:** [More Information Needed]
-- **Hours used:** [More Information Needed]
-- **Cloud Provider:** [More Information Needed]
-- **Compute Region:** [More Information Needed]
-- **Carbon Emitted:** [More Information Needed]
-
-## Technical Specifications [optional]
-
-### Model Architecture and Objective
-
-[More Information Needed]
-
-### Compute Infrastructure
-
-[More Information Needed]
-
-#### Hardware
-
-[More Information Needed]
-
-#### Software
-
-[More Information Needed]
-
-## Citation [optional]
-
-<!-- If there is a paper or blog post introducing the model, the APA and Bibtex information for that should go in this section. -->
-
-**BibTeX:**
-
-[More Information Needed]
-
-**APA:**
-
-[More Information Needed]
-
-## Glossary [optional]
-
-<!-- If relevant, include terms and calculations in this section that can help readers understand the model or model card. -->
-
-[More Information Needed]
-
-## More Information [optional]
-
-[More Information Needed]
-
-## Model Card Authors [optional]
-
-[More Information Needed]
-
-## Model Card Contact
-
-[More Information Needed]
 ### Framework versions
 
 - PEFT 0.19.1
