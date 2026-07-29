@@ -1,7 +1,7 @@
 # Leak & Account-Redaction Tests
 
 Two holistic, business-facing tests that complement the per-span P/R/F1/F2 metrics
-in `run_frozen_comparison.py`:
+in `run_benchmark.py`:
 
 1. **PII residual-leak test** — after redaction, does a *full* direct identifier
    (mobile / NRIC / address) still sit in the transcript as plain text?
@@ -9,12 +9,12 @@ in `run_frozen_comparison.py`:
    how often does the model still redact an account number so completely that the
    Business Unit can no longer identify the customer?
 
-Both run against the frozen set (`pii/data/frozen/test_gold_419.jsonl`) and the
+Both run against the frozen set (`pii/data/test/test_gold_419.jsonl`) and the
 fine-tuned keeper model (`pii/models/finetuned_pii_9label/best`). Scripts
-use repo-relative paths. **HTML reports** are written to `pii/inference/results/`
+use repo-relative paths. **HTML reports** are written to `pii/evaluation/results/`
 (`leaked_transcripts.html`, `account_unrecoverable.html`); **intermediate data**
 (redacted transcripts, judge results, account detail) goes to
-`pii/inference/results/leak_tests/`.
+`pii/evaluation/results/leak_tests/`.
 
 Run everything with the project venv:
 `venv/bin/python3`
