@@ -9,22 +9,11 @@ The nine labels are `sg_phone_number`, `sg_nric_fin`, `sg_address`,
 `sg_postal_code`, `sg_address_unit_number`, `sg_address_block_number`,
 `email_address`, `account_number`, and `full_name`.
 
-## Results
-
-Scored on 419 held-out authentic transcripts (precision / recall / F1 / F2,
-where F2 weights recall twice as heavily as precision). Each method is run as it
-would be deployed: prompted with all 9 labels, and prompted with only the 7 base
-labels (a genuine 7-label run, not a subset — the GLiNER models are promptable).
-
-| Method       | All 9 labels (9-label prompt) | Base 7 labels (7-label prompt) |
-|--------------|-----------------------|-----------------------|
-| Baseline     | 0.68 / 0.73 / 0.70 / 0.72 | 0.63 / 0.69 / 0.66 / 0.68 |
-| Rule-based   | 0.76 / 0.61 / 0.68 / 0.64 | 0.68 / 0.50 / 0.58 / 0.53 |
-| **Fine-tuned** | **0.77 / 0.87 / 0.82 / 0.85** | **0.61 / 0.84 / 0.71 / 0.78** |
-
 Recall matters more than precision here: a missed identifier is a leak, while an
-over-redaction is a minor inconvenience. The fine-tuned model leads on recall and
-on the recall-weighted F2 score.
+over-redaction is a minor inconvenience — so the benchmark headline is the
+recall-weighted F2 score. The current numbers live in
+`evaluation/results/frozen_comparison.txt` (regenerate with the benchmark below);
+`HANDOVER.md` and `PIPELINE_OVERVIEW.md` carry the summary tables.
 
 ## Setup
 

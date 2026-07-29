@@ -65,6 +65,8 @@ models/finetuned_pii_9label/*
 *.ipynb
 # Exception: reproducible leak-judge notebook — no outputs, synthetic examples only.
 !evaluation/leak_tests/residual_pii_analysis.ipynb
+# Exception: synthetic-data generator notebook — no outputs, synthetic scenarios only.
+!finetuning/data_prep/generate_synthetic_data.ipynb
 
 # --- external/ is not part of the handover repo ---
 # The company's own presidio-gliner checkout and any experimental work left
