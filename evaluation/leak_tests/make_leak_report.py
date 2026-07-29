@@ -3,7 +3,7 @@
 Final step of the residual-PII leak test. Combines the judge_result_*.json
 files, computes file-based and customer-based leak rates, and renders each
 leaked transcript with the residual PII and correct tags highlighted.
-Output: results/leak_tests/leaked_transcripts.html.
+Output: results/leaked_transcripts.html.
 """
 import json, glob, os, html, re
 from pathlib import Path

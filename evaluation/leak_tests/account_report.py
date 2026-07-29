@@ -9,7 +9,7 @@ COMPLETE_DIGITS digits) survives unredacted, or when every account piece
 survives and can be reassembled. A transcript is flagged when no complete
 account can be obtained. Because the rule runs on the saved detail,
 COMPLETE_DIGITS can be changed without re-running inference.
-Output: results/leak_tests/account_unrecoverable.html.
+Output: results/account_unrecoverable.html.
 """
 import json, glob, os, html
 from pathlib import Path

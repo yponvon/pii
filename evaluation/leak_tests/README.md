@@ -44,7 +44,7 @@ company / title), and anything already inside a `<TAG>` do NOT count.
    - Each shard writes `judge_result_K.json`:
      `{"assessed": int, "leaked_lines": [..], "details": [{line,type,value}]}`
 3. **Aggregate + HTML**:
-   `python make_leak_report.py`  → `results/leak_tests/leaked_transcripts.html`
+   `python make_leak_report.py`  → `results/leaked_transcripts.html`
    (leaked plain PII in red, correct tags in blue) + prints file- and
    customer-based leak rates.
 
@@ -76,7 +76,7 @@ BAD = no complete account obtainable.
    (per account value: digits, total occurrences, redacted occurrences).
 2. **Apply rule + HTML** (offline, instant — tweak the rule freely, no re-run):
    `python account_report.py`  → prints bad-transcript count +
-   `results/leak_tests/account_unrecoverable.html`
+   `results/account_unrecoverable.html`
    (account pieces color-coded: red = fully redacted/lost, green = survived).
 
 **Last result (keeper model):** 21/176 account-bearing calls (11.9%) lose the
