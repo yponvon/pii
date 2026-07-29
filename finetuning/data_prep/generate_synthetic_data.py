@@ -20,9 +20,10 @@ Method (see DATA.md for the full write-up):
      This is the exact shape the model trains on and the pipeline is scored on
      (see data/train/example.json).
 
-Output: data/train/synthetic/<name>.json  (offline; the data/ folder is gitignored).
-The builder (build_splits.py) globs this recursively, so demo records land in the
-training split. Move any you want held out into data/val/.
+Output: data/generated/<name>.json  (offline; the data/ folder is gitignored).
+Like the notebook, this writes to the data/generated/ staging folder. Review the
+records, then move approved ones into data/train/synthetic/ (or data/val/synthetic/)
+before running build_splits.py.
 
 Usage:
   python finetuning/data_prep/generate_synthetic_data.py
@@ -31,7 +32,7 @@ Usage:
 import json
 from pathlib import Path
 
-OUT_DIR = Path(__file__).resolve().parents[2] / "data" / "train" / "synthetic"
+OUT_DIR = Path(__file__).resolve().parents[2] / "data" / "generated"
 
 # Each record: (filename, tier, transcript, entities).
 # Values are listed once per occurrence so gold counts match the text exactly.

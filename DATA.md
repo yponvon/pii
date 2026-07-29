@@ -91,13 +91,18 @@ written in batch scripts, each producing a handful of records. The method:
    the text.
 4. **Write.** Each record is saved as `{"input", "output"}` JSON.
 
-Two files support this:
+Two files support this, and both write to a **`data/generated/` staging folder**.
+Generation is a candidate step: review what lands there, then move approved files
+into `data/train/synthetic/` (or `data/val/synthetic/`) before running
+`build_splits.py`.
 
 - **`finetuning/data_prep/generate_synthetic_data.ipynb`** — the **live generator**.
-  Azure `o4-mini` drafts a scenario/tier-specific transcript with its gold labels,
-  the gold-integrity checker verifies the occurrence counts (with an automatic
-  repair pass), and files are saved as `NNN_tier_scenario.json`. This reproduces
-  the authoring loop above; it needs the `AZURE_OPENAI_*` environment variables.
+  Azure `o4-mini` drafts a long scenario/tier-specific transcript with its gold
+  labels, the gold-integrity checker verifies the occurrence counts (with an
+  automatic repair pass), and files are saved as `NNN_tier_scenario.json` (anything
+  the checker still doubts is marked `_REVIEW`). This reproduces the authoring loop
+  above; it needs `pip install -r requirements.txt` and the `AZURE_OPENAI_*`
+  environment variables.
 - **`finetuning/data_prep/generate_synthetic_data.py`** — a static, dependency-free
   **shape demo**: three hand-written records (normal address update, medium phone
   read-back, negative) showing the exact output format. Run with
