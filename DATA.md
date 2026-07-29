@@ -32,9 +32,10 @@ The nine labels: `sg_phone_number`, `sg_nric_fin`, `sg_address`,
 `sg_postal_code`, `sg_address_unit_number`, `sg_address_block_number`,
 `email_address`, `account_number`, `full_name`.
 
-Source corpus files are one record per `.json`; the built splits are one record
-per line (`.jsonl`). See `training_data/example.json`, `val_data/example.json`,
-and `test_data/example.json` for concrete committed examples.
+Source transcripts are one record per `.json`; the built training/validation
+splits are one record per line (`.jsonl`). See `data/train/example.json`,
+`data/val/example.json`, and `data/test/example.json` for concrete committed
+examples.
 
 At **inference** the model takes just the `input` string and returns predicted
 `(text, label)` spans; `inference/redact.py` turns those into a redacted string.
@@ -43,18 +44,30 @@ At **inference** the model takes just the `input` string and returns predicted
 
 ## 2. Where the data lives
 
-| Folder | Contents | Committed? |
-|---|---|---|
-| `training_data/` | training split (`train_mixed2.jsonl`) | only `example.json` |
-| `val_data/` | validation split (`val_mixed2.jsonl`) | only `example.json` |
-| `test_data/` | frozen held-out test set (`test_gold_419.jsonl`) | only `example.json` |
-| `data/` | offline source corpora (`synthetic/`, `authentic_val/`, `authentic_test/`) that the splits are built from | nothing (fully gitignored) |
+Everything lives under one folder, `data/`. **The folder *is* the split** — put a
+transcript in `data/train/` and it is training data; put it in `data/val/` and it
+is validation. There are no hardcoded counts or sampling; you reshape the splits
+just by adding or removing files.
 
-The consuming code points at these folders:
-- `finetuning/scripts/train.py` reads `training_data/` and `val_data/`.
-- `evaluation/run_benchmark.py` and `evaluation/benchmark_per_label.py` read `test_data/`.
-- `finetuning/data_prep/build_mixed_training_data.py` reads the `data/` source
-  corpora and writes the splits into `training_data/` / `val_data/` / `test_data/`.
+| Path | Contents | Committed? |
+|---|---|---|
+| `data/train/` | training transcripts (one `.json` each) | only `example.json` |
+| `data/val/` | validation transcripts | only `example.json` |
+| `data/test/` | the frozen held-out benchmark gold (`test_gold_419.jsonl`) | only `example.json` |
+| `data/train.jsonl`, `data/val.jsonl` | the built splits (produced by `build_splits.py`) | no (real PII) |
+
+Each split folder may hold provenance subfolders — the shipped layout keeps
+`synthetic/` and `authentic/` apart (`data/train/synthetic/`,
+`data/train/authentic/`, and the same under `data/val/`) — and the builder globs
+them recursively, so the structure is optional.
+
+The consuming code points at these paths:
+- `finetuning/data_prep/build_splits.py` reads `data/train/` and `data/val/` and
+  writes `data/train.jsonl` / `data/val.jsonl`. The test set is frozen and never
+  rebuilt.
+- `finetuning/scripts/train.py` reads `data/train.jsonl` and `data/val.jsonl`.
+- `evaluation/run_benchmark.py` and `evaluation/benchmark_per_label.py` read
+  `data/test/test_gold_419.jsonl`.
 
 ---
 

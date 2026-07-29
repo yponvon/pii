@@ -14,17 +14,25 @@ __pycache__/
 # CUSTOMER DATA AND ANYTHING DERIVED FROM IT — never commit (real PII,
 # including in file names)
 # =============================================================================
-# Offline source corpora and any leftover raw data (synthetic + authentic
-# transcripts, annotations). Never committed.
-data/
-# The train/val/test folders ship with ONE fake example.json each so the model
-# input/output shape is visible; every real data file stays local.
-training_data/*
-!training_data/example.json
-val_data/*
-!val_data/example.json
-test_data/*
-!test_data/example.json
+# Everything under data/ is offline (real PII, including in file names): the
+# source transcripts (data/train/, data/val/), the built train.jsonl/val.jsonl,
+# and the frozen test gold (data/test/). Only ONE fake example.json per split
+# folder is committed so the model input/output shape stays visible in git.
+data/*
+!data/train/
+!data/val/
+!data/test/
+data/train/*
+!data/train/example.json
+data/val/*
+!data/val/example.json
+data/test/*
+!data/test/example.json
+# Legacy split folders, superseded by data/train, data/val, data/test. They may
+# still hold offline real-PII .jsonl locally; never track them.
+/training_data/
+/val_data/
+/test_data/
 # Training and run logs.
 **/logs/
 *.log

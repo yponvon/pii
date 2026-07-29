@@ -2,7 +2,7 @@
 benchmark_per_label.py
 
 Per-label P/R/F1 for the fine-tuned model across all 9 entity types, scored on
-the frozen 419-file held-out test set (test_data/test_gold_419.jsonl, zero
+the frozen 419-file held-out test set (data/test/test_gold_419.jsonl, zero
 training exposure). Uses matcher.match_entities_fixed (the benchmark
 matcher) with the production postprocessing pipeline.
 
@@ -54,7 +54,7 @@ def build_cases():
     filtering to full-format NRIC only would score correct fragment catches as
     false positives.
     """
-    path = PII_ROOT / "test_data" / "test_gold_419.jsonl"
+    path = PII_ROOT / "data" / "test" / "test_gold_419.jsonl"
     cases = []
     with open(path, encoding="utf-8") as fh:
         for line in fh:

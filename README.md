@@ -61,9 +61,12 @@ print(redact(model, transcript, fmt="tagged"))
 
 The trained adapter is already included, so retraining is optional. To retrain:
 
-1. Place `train_mixed2.jsonl` in `training_data/` and `val_mixed2.jsonl` in
-   `val_data/`. These contain real PII, so they are kept offline (see `DATA.md`).
-2. Run `python finetuning/scripts/train.py` (seed 42).
+1. Drop your training transcripts into `data/train/` and validation transcripts
+   into `data/val/` (one `.json` per transcript; these hold real PII, so the
+   folders are kept offline — see `DATA.md`).
+2. Build the splits: `python finetuning/data_prep/build_splits.py` → writes
+   `data/train.jsonl` / `data/val.jsonl`.
+3. Run `python finetuning/scripts/train.py` (seed 42).
 
 The best adapter is written to `models/finetuned_pii_9label/best`, which is
 the checkpoint the inference scripts load by default.
@@ -85,7 +88,7 @@ See `PIPELINE_OVERVIEW.md` for the full description.
 ## End-to-end flow
 
 ```
-1. finetuning/data_prep/build_mixed_training_data.py  → train_mixed2 / val_mixed2   (offline; real PII)
+1. finetuning/data_prep/build_splits.py  → data/train.jsonl / data/val.jsonl   (offline; real PII)
 2. finetuning/scripts/train.py                        → models/finetuned_pii_9label/best/   (LoRA adapter + loss.png)
 3. evaluation/run_benchmark.py         → evaluation/results/frozen_comparison.txt
         the 3-way benchmark: baseline vs rule-based vs fine-tuned, 419 frozen set, 9- and 7-label prompts
@@ -118,7 +121,8 @@ evaluation/          Measure the model
 models/
   finetuned_pii_9label/best/   The fine-tuned LoRA adapter (the keeper)
   rule-based-gliner/           The rule-based Presidio baseline (redaction.py)
-training_data/ val_data/ test_data/   One fake example.json each (real data offline)
+data/
+  train/ val/ test/            Folder = split; one fake example.json each (real data offline)
 ```
 
 See `DATA.md` for the data shape and how the synthetic corpus was generated.

@@ -44,7 +44,7 @@ evaluation/            Measure the model
   leak_tests/          Business-facing residual-leak and account-redaction tests
 models/finetuned_pii_9label/best/   The trained LoRA adapter (~13 MB)
 models/rule-based-gliner/redaction.py   Rule-based Presidio baseline (the 3rd benchmark arm)
-training_data/ val_data/ test_data/   One fake example.json each (real data offline; see DATA.md)
+data/train/ data/val/ data/test/   Folder = split; one fake example.json each (real data offline; see DATA.md)
 ```
 
 **The three scripts that matter:**
@@ -176,9 +176,11 @@ back to the original text.
 ## 7. Retraining
 
 The adapter is included, so retraining is optional.
-1. Place the offline training splits `train_mixed2.jsonl` / `val_mixed2.jsonl` in
-   `training_data/` and `val_data/` (kept offline — real PII; see DATA.md).
-2. `python finetuning/scripts/train.py` (seed 42).
+1. Drop training/validation transcripts into `data/train/` and `data/val/` (one
+   `.json` each; kept offline — real PII; see DATA.md).
+2. Build the splits: `python finetuning/data_prep/build_splits.py` →
+   `data/train.jsonl` / `data/val.jsonl`.
+3. `python finetuning/scripts/train.py` (seed 42).
 
 The best adapter is written to `models/finetuned_pii_9label/best/`, which the
 inference scripts load by default.
@@ -192,7 +194,7 @@ python evaluation/run_benchmark.py
 ```
 Scores baseline, rule-based, and fine-tuned on the frozen 419 and writes
 `evaluation/results/frozen_comparison.txt`. Requires the offline gold set at
-`test_data/test_gold_419.jsonl`.
+`data/test/test_gold_419.jsonl`.
 
 ---
 

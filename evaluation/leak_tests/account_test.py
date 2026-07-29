@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "inference"))
 from pipeline import LABELS_7, run_windowed   # 7 base labels, no account_number
 from redact import load_finetuned                        # noqa: E402
 
-frozen = [json.loads(l) for l in open(ROOT / "test_data" / "test_gold_419.jsonl")]
+frozen = [json.loads(l) for l in open(ROOT / "data" / "test" / "test_gold_419.jsonl")]
 OUT = ROOT / "evaluation" / "results" / "leak_tests" / "acct_detail.json"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 model = load_finetuned()

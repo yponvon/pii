@@ -48,7 +48,7 @@ Format — one JSON object per line (`.jsonl`), model-native GLiNER2 shape:
   listed N times must occur N times in the text (the "gold invariant"). Fragments
   are listed as separate values (`"S117"`, `"5-8-4-2-H"`).
 
-### The splits actually used by the keeper (`train_mixed2` / `val_mixed2`)
+### The splits actually used by the keeper (`data/train.jsonl` / `data/val.jsonl`)
 
 | split | lines | contents |
 |---|--:|---|

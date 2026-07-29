@@ -18,7 +18,7 @@ Method (see DATA.md for the full write-up):
   3. Records are written one JSON object per file:
          {"input": <transcript>, "output": {"entities": {<label>: [<str>, ...]}}}
      This is the exact shape the model trains on and the pipeline is scored on
-     (see training_data/example.json).
+     (see data/train/example.json).
 
 Output: data/synthetic/<name>.json  (offline; the data/ folder is gitignored).
 

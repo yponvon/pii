@@ -4,7 +4,7 @@ Scores baseline zero-shot GLiNER, rule-based presidio, and fine-tuned GLiNER
 against one frozen gold set so the resulting numbers are directly comparable.
 The comparison holds the following constant across all three methods:
 
-  * Gold set : test_data/test_gold_419.jsonl   (the same 419 files for all three)
+  * Gold set : data/test/test_gold_419.jsonl   (the same 419 files for all three)
   * Matcher  : match_entities_fixed              (the same matching logic for all three)
   * NRIC gold: full-format filter disabled       (frozen-path policy; fragments count)
   * Labels   : standardised to the same nine NORMALIZED_LABEL labels for all three
@@ -51,7 +51,7 @@ from typing import Callable, List, Tuple
 #       evaluation/run_benchmark.py                  this file
 #       evaluation/results/                          report is written here
 #       evaluation/{matcher,metrics}.py              matcher + scoring helpers
-#       test_data/test_gold_419.jsonl                the frozen gold set (offline)
+#       data/test/test_gold_419.jsonl                the frozen gold set (offline)
 #       inference/                                   the detection pipeline
 #       models/finetuned_pii_9label/                 fine-tuned adapter
 #       models/rule-based-gliner/redaction.py        rule-based baseline
@@ -75,7 +75,7 @@ from metrics import _prf  # noqa: E402
 from gliner2 import GLiNER2
 
 # Fixed inputs and outputs.
-FROZEN = PII_ROOT / "test_data" / "test_gold_419.jsonl"          # the gold set
+FROZEN = PII_ROOT / "data" / "test" / "test_gold_419.jsonl"          # the gold set
 DEFAULT_ADAPTER = PII_ROOT / "models" / "finetuned_pii_9label" / "best"
 RESULTS = PII_ROOT / "evaluation" / "results" / "frozen_comparison.txt"  # text report
 

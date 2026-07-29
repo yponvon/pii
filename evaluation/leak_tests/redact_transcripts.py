@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
 sys.path.insert(0, str(ROOT / "inference"))
 from redact import load_finetuned, redact                # noqa: E402
 
-FROZEN = ROOT / "test_data" / "test_gold_419.jsonl"
+FROZEN = ROOT / "data" / "test" / "test_gold_419.jsonl"
 OUT = ROOT / "evaluation" / "results" / "leak_tests" / "redacted_all.jsonl"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 

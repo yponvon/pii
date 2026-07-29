@@ -24,8 +24,8 @@ from gliner2.training.trainer import GLiNER2Trainer, TrainingConfig
 
 MODEL_PATH = "fastino/gliner2-privacy-filter-PII-multi"
 _ROOT = Path(__file__).resolve().parents[2]
-TRAIN_DATA = _ROOT / "training_data" / "train_mixed2.jsonl"
-VAL_DATA = _ROOT / "val_data" / "val_mixed2.jsonl"
+TRAIN_DATA = _ROOT / "data" / "train.jsonl"
+VAL_DATA = _ROOT / "data" / "val.jsonl"
 OUT = _ROOT / "models" / "finetuned_pii_9label"
 LOGS = _ROOT / "finetuning" / "logs"
 
