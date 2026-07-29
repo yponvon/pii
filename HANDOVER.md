@@ -180,10 +180,13 @@ The adapter is included, so retraining is optional.
    `.json` each; kept offline — real PII; see DATA.md).
 2. Build the splits: `python finetuning/data_prep/build_splits.py` →
    `data/train.jsonl` / `data/val.jsonl`.
-3. `python finetuning/scripts/train.py` (seed 42).
+3. `python finetuning/scripts/train.py [run_name]` (seed 42). Each run writes to
+   its own `models/runs/<run_name>/` (timestamped if unnamed), so the shipped
+   keeper is never overwritten.
 
-The best adapter is written to `models/finetuned_pii_9label/best/`, which the
-inference scripts load by default.
+This yields a *candidate* at `models/runs/<run_name>/best`. Benchmark it; only if
+it beats the keeper, promote it by copying over `models/finetuned_pii_9label/best`
+— the checkpoint inference loads by default.
 
 ---
 

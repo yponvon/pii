@@ -49,10 +49,14 @@ The trained adapter is already included, so retraining is optional. To retrain:
    folders are kept offline — see `DATA.md`).
 2. Build the splits: `python finetuning/data_prep/build_splits.py` → writes
    `data/train.jsonl` / `data/val.jsonl`.
-3. Run `python finetuning/scripts/train.py` (seed 42).
+3. Run `python finetuning/scripts/train.py [run_name]` (seed 42). Each run writes
+   to its own folder `models/runs/<run_name>/` (auto-named by timestamp if you
+   omit `run_name`), so retraining never overwrites the shipped keeper.
 
-The best adapter is written to `models/finetuned_pii_9label/best`, which is
-the checkpoint the inference scripts load by default.
+This produces a *candidate* adapter at `models/runs/<run_name>/best`. Benchmark
+it, and only if it beats the current keeper promote it — copy it over
+`models/finetuned_pii_9label/best`, which is the checkpoint the inference scripts
+load by default.
 
 ## Pipeline
 
