@@ -28,7 +28,7 @@ for _p in (EVAL_DIR, PII_ROOT / "inference"):
         sys.path.insert(0, str(_p))
 
 from pipeline import (  # noqa: E402
-    MODEL_PATH, SYNTHETIC_LABELS, NORMALIZED_LABEL, run_fulltext, run_windowed,
+    MODEL_PATH, LABELS_9, NORMALIZED_LABEL, run_fulltext, run_windowed,
 )
 from matcher import match_entities_fixed  # noqa: E402
 from metrics import _prf  # noqa: E402
@@ -111,7 +111,7 @@ def main():
         print("Inference: OVERLAPPING WINDOWS (1800-char windows, 400 overlap)")
 
     per_label_tp, per_label_fp, per_label_fn, total_tp, total_fp, total_fn = evaluate(
-        model, cases, SYNTHETIC_LABELS, windowed=windowed
+        model, cases, LABELS_9, windowed=windowed
     )
 
     print()

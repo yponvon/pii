@@ -79,7 +79,7 @@ precision / recall / F1 / **F2** (F2 weights recall 2× — a miss is a leak):
 
 | Method | all 9 labels |
 |---|---|
-| baseline (zero-shot GLiNER) | 0.68 / 0.73 / 0.70 / 0.72 |
+| baseline (zero-shot GLiNER) | 0.67 / 0.74 / 0.70 / 0.72 |
 | rule-based (Presidio + spaCy) | 0.76 / 0.61 / 0.68 / 0.64 |
 | **fine-tuned (keeper)** | **0.77 / 0.87 / 0.82 / 0.85** |
 

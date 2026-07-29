@@ -26,8 +26,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from labels import (  # noqa: E402,F401  (re-exported for callers)
-    MODEL_PATH, NORMALIZED_LABEL, BASELINE_LABELS, FINETUNED_LABELS,
-    SYNTHETIC_EXTRA_LABELS, SYNTHETIC_LABELS,
+    MODEL_PATH, NORMALIZED_LABEL, LABELS_7,
+    EXTRA_LABELS, LABELS_9,
 )
 from preprocessing import normalize_numbers, map_to_original  # noqa: E402
 from postprocessing import (  # noqa: E402

@@ -67,7 +67,7 @@ for _path in (EVAL_DIR, INFERENCE_DIR):
         sys.path.insert(0, str(_path))
 
 from pipeline import (  # noqa: E402
-    NORMALIZED_LABEL, MODEL_PATH, BASELINE_LABELS, SYNTHETIC_LABELS, run_windowed,
+    NORMALIZED_LABEL, MODEL_PATH, LABELS_7, LABELS_9, run_windowed,
 )
 from matcher import match_entities_fixed  # noqa: E402
 from metrics import _prf  # noqa: E402
@@ -95,12 +95,10 @@ RULEBASED_THRESHOLD = 0.5
 # Overlapping-window inference parameters (see run_windowed in inference/pipeline.py).
 WIN_CHARS, OVERLAP = 1800, 400
 
-# The baseline model is zero-shot promptable, so it is queried with the full
-# label set, including the sg_contact_number synonym (which NORMALIZED_LABEL folds into
-# SG_PHONE_NUMBER) and the two labels introduced by the synthetic corpus. This
-# gives the baseline the same opportunity to detect every label the other
-# methods are scored on.
-BASELINE_QUERY = BASELINE_LABELS + ["account_number", "full_name"]
+# Both GLiNER methods (the zero-shot baseline and the fine-tuned model) are
+# queried with the SAME label set, so the only variable between them is the
+# fine-tuning. The baseline gets no extra or synonym label -- strict parity.
+BASELINE_QUERY = LABELS_9
 
 # Mapping from the rule-based system's recognizer names to the shared NORMALIZED_LABEL
 # labels. ACCOUNT_NUMBER comes from a bare-10-digit PatternRecognizer, and
@@ -125,14 +123,13 @@ REPORT_LABELS = ["EMAIL_ADDRESS", "SG_ADDRESS", "SG_ADDRESS_BLOCK", "SG_ADDRESS_
                  "ACCOUNT_NUMBER", "FULL_NAME"]
 BASE7 = REPORT_LABELS[:7]  # the seven labels reported by the historical benchmark
 
-# 7-label query variants: the same per-method queries with the two new labels
-# (account_number, full_name) dropped. A 7-label deployment prompts each method
-# with only those seven, so the "base 7 labels" column is scored from a genuine
-# 7-label run rather than a subset of the 9-label run. This matters because the
-# GLiNER models are promptable: the label set they are asked for changes what
-# they predict for the labels that remain.
-BASELINE_QUERY_7 = [l for l in BASELINE_QUERY if NORMALIZED_LABEL.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
-SYNTHETIC_LABELS_7 = [l for l in SYNTHETIC_LABELS if NORMALIZED_LABEL.get(l) not in ("ACCOUNT_NUMBER", "FULL_NAME")]
+# 7-label variants: the same queries with the two new labels (account_number,
+# full_name) dropped. A 7-label deployment prompts each method with only those
+# seven, so the "base 7 labels" column is a genuine 7-label run rather than a
+# subset of the 9-label run -- the GLiNER models are promptable, so the label set
+# they are asked for changes what they predict for the labels that remain. Both
+# GLiNER methods use the same 7-label query, LABELS_7 (the base 7).
+BASELINE_QUERY_7 = LABELS_7
 RULEBASED_ENTITIES_7 = [e for e in RULEBASED_ENTITIES if RULEBASED_NORMALIZED_LABEL[e] not in ("ACCOUNT_NUMBER", "FULL_NAME")]
 
 # Aggregated results for one method: true/false positives and false negatives
@@ -328,8 +325,8 @@ def evaluate_methods(cases, adapter: Path, log: Callable[[str], None]) -> dict:
         ft_model = GLiNER2.from_pretrained(MODEL_PATH)
         ft_model.load_adapter(str(adapter))
         methods["finetuned"] = {
-            "nine": score(cases, lambda text: predict_finetuned(ft_model, text, SYNTHETIC_LABELS)),
-            "seven": score(cases, lambda text: predict_finetuned(ft_model, text, SYNTHETIC_LABELS_7)),
+            "nine": score(cases, lambda text: predict_finetuned(ft_model, text, LABELS_9)),
+            "seven": score(cases, lambda text: predict_finetuned(ft_model, text, LABELS_7)),
         }
     else:
         log(f"      adapter not found at {adapter} -- fine-tuned method skipped")

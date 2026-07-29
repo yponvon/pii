@@ -11,7 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent          # .../pii
 sys.path.insert(0, str(ROOT / "inference"))
-from pipeline import FINETUNED_LABELS, run_windowed   # 7 base labels, no account_number
+from pipeline import LABELS_7, run_windowed   # 7 base labels, no account_number
 from redact import load_finetuned                        # noqa: E402
 
 frozen = [json.loads(l) for l in open(ROOT / "test_data" / "test_gold_419.jsonl")]
@@ -26,7 +26,7 @@ for i, d in enumerate(frozen):
     if not accts:
         continue
     text = d["input"]
-    spans = run_windowed(model, text, FINETUNED_LABELS, 0.35, return_spans=True)  # (text,label,s,e,conf)
+    spans = run_windowed(model, text, LABELS_7, 0.35, return_spans=True)  # (text,label,s,e,conf)
 
     def hit_labels(a, b):
         return {lab for _t, lab, s, e, _c in spans if not (b <= s or a >= e)}

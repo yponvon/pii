@@ -20,7 +20,7 @@ INFERENCE_DIR = Path(__file__).resolve().parent
 if str(INFERENCE_DIR) not in sys.path:
     sys.path.insert(0, str(INFERENCE_DIR))
 
-from pipeline import MODEL_PATH, SYNTHETIC_LABELS, run_windowed  # noqa: E402
+from pipeline import MODEL_PATH, LABELS_9, run_windowed  # noqa: E402
 from gliner2 import GLiNER2  # noqa: E402
 
 DEFAULT_ADAPTER = INFERENCE_DIR.parent / "models" / "finetuned_pii_9label" / "best"
@@ -35,7 +35,7 @@ def load_finetuned(adapter=DEFAULT_ADAPTER):
 
 def predict_spans(model, transcript, threshold=THRESHOLD):
     """Return predicted spans as (text, label, start, end, confidence) tuples in original-text coordinates."""
-    return run_windowed(model, transcript, SYNTHETIC_LABELS, threshold, return_spans=True)
+    return run_windowed(model, transcript, LABELS_9, threshold, return_spans=True)
 
 
 def _outermost(spans):
