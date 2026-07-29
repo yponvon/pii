@@ -76,27 +76,27 @@ See `PIPELINE_OVERVIEW.md` for the full description.
 
 ```
 1. finetuning/data_prep/build_splits.py  → data/train.jsonl / data/val.jsonl   (offline; real PII)
-2. finetuning/scripts/train.py                        → models/finetuned_pii_9label/best/   (LoRA adapter + loss.png)
+2. finetuning/scripts/train.py [run_name]             → models/runs/<run_name>/best/   (candidate LoRA adapter + loss.png)
 3. evaluation/run_benchmark.py         → evaluation/results/frozen_comparison.txt
         the 3-way benchmark: baseline vs rule-based vs fine-tuned, 419 frozen set, 9- and 7-label prompts
 4. evaluation/benchmark_per_label.py          → per-label P/R/F1 on the same 419 set
 5. evaluation/leak_tests/                               → residual-leak + account-redaction business tests
 ```
 
-Steps 1–2 are optional (the trained adapter ships). Step 3 produces the headline
-results table above.
+Steps 1–2 are optional (the trained adapter ships). Step 3 writes the benchmark
+report to `evaluation/results/frozen_comparison.txt`.
 
 ## Repository layout
 
 ```
 finetuning/          Make the model (training)
-  data_prep/         Split builders + generate_synthetic_data.py
+  data_prep/         build_splits.py + generate_synthetic_data (.py demo, .ipynb live generator)
   scripts/           train.py, plot_loss.py
 inference/           Redact (the pipeline)
   pipeline.py        Orchestration (run_windowed / run_fulltext)
   preprocessing.py   Spoken-number normalization
   postprocessing.py  Precision filters + recall boosters
-  labels.py          Label lists + the CANON name map
+  labels.py          Label lists + the NORMALIZED_LABEL name map
   redact.py          Production entry point
 evaluation/          Measure the model
   run_benchmark.py   The 3-way benchmark

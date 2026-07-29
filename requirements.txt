@@ -35,7 +35,7 @@ numpy==2.4.6
 matplotlib==3.11.1
 
 # --- Residual-PII leak-judge notebook only (Azure o4-mini via LangChain) ---
-# Needed just to run inference/leak_tests/residual_pii_analysis.ipynb; the
+# Needed just to run evaluation/leak_tests/residual_pii_analysis.ipynb; the
 # benchmark and redaction pipeline do not depend on these.
 langchain-openai==0.3.35
 langchain-core==0.3.79

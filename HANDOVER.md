@@ -34,7 +34,7 @@ HANDOVER.md            This document
 requirements.txt       Pinned dependencies (Python 3.11)
 
 finetuning/            Make the model (training)
-  data_prep/           Split builders + generate_synthetic_data.py
+  data_prep/           build_splits.py + generate_synthetic_data (.py demo, .ipynb live generator)
   scripts/             train.py (the keeper trainer), plot_loss.py
 inference/             Redact (the pipeline)
   pipeline.py          Orchestration; + preprocessing.py, postprocessing.py, labels.py, redact.py

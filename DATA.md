@@ -91,13 +91,17 @@ written in batch scripts, each producing a handful of records. The method:
    the text.
 4. **Write.** Each record is saved as `{"input", "output"}` JSON.
 
-`finetuning/data_prep/generate_synthetic_data.py` is a cleaned, runnable example
-batch demonstrating exactly this method (three records: a normal address update,
-a medium phone read-back, and a negative). Run it with:
+Two files support this:
 
-```
-python finetuning/data_prep/generate_synthetic_data.py
-```
+- **`finetuning/data_prep/generate_synthetic_data.ipynb`** — the **live generator**.
+  Azure `o4-mini` drafts a scenario/tier-specific transcript with its gold labels,
+  the gold-integrity checker verifies the occurrence counts (with an automatic
+  repair pass), and files are saved as `NNN_tier_scenario.json`. This reproduces
+  the authoring loop above; it needs the `AZURE_OPENAI_*` environment variables.
+- **`finetuning/data_prep/generate_synthetic_data.py`** — a static, dependency-free
+  **shape demo**: three hand-written records (normal address update, medium phone
+  read-back, negative) showing the exact output format. Run with
+  `python finetuning/data_prep/generate_synthetic_data.py`.
 
 The authentic calls were hand-annotated for the two new labels (`account_number`,
 `full_name`); their original seven labels are byte-identical to the pre-annotation

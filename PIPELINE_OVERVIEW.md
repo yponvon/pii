@@ -182,7 +182,8 @@ Reading it:
   while val is authentic → a domain gap, not pure memorization. This is the main
   reason recall isn't higher, and points at "more authentic data" as the next lever.
 
-Loss curve rendered at `models/finetuned_pii_9label/loss.png`.
+Loss curve rendered at `models/runs/<run_name>/loss.png` (the keeper's curve was
+from the shipped run).
 
 ---
 
