@@ -115,6 +115,20 @@ Two files reproduce this, both writing to a **`data/generated/` staging folder**
 The archived `generate_batch_*.py` scripts under `archive/` are the historical record
 of the original generation (offline; not part of the handover).
 
-The authentic calls were hand-annotated for the two new labels (`account_number`,
-`full_name`); their original seven labels are byte-identical to the pre-annotation
-backups.
+---
+
+## 4. How the authentic gold was labelled
+
+The authentic calls — the frozen 419-transcript benchmark
+(`data/test/test_gold_419.jsonl`) and the ~150 authentic train/val calls — were
+labelled directly by an **LLM**, not derived from any redaction pass. Each **raw
+diarized transcript** was handed to the LLM, which was asked to reproduce the full
+transcript as `input` and label every PII value, emitting the complete
+`{"input", "output": {"entities": …}}` record in one pass. The gold is therefore an
+**independent LLM annotation of the raw transcript**: it is *not* a transform of the
+separate pii-redacted transcripts, which are an earlier, imperfect redaction and are
+**not** ground truth (their spans do not match the gold). Because the LLM re-emits the
+transcript when producing `input`, the gold text is the raw transcript as reproduced by
+the model rather than a byte-for-byte copy of the source CSV. (The synthetic corpus, by
+contrast, is produced by the generator in §3 — the LLM-labelling here applies only to
+the real calls.)
